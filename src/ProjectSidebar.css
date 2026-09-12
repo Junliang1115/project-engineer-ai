@@ -1,0 +1,25 @@
+.capital-portfolio-wrapper .project-workspace { display: grid; grid-template-columns: 224px minmax(0, 1fr); align-items: start; flex: 1; }
+.capital-portfolio-wrapper .project-section-sidebar { position: sticky; top: 0; padding: 24px 16px; min-height: calc(100vh - 60px); background: #1c2023; border-right: 1px solid var(--line); }
+.capital-portfolio-wrapper .project-return { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 8px; color: #a9b0b5; cursor: pointer; font: inherit; font-size: 12px; }
+.capital-portfolio-wrapper .project-sidebar-title { display: grid; gap: 8px; padding: 24px 8px; overflow-wrap: anywhere; }
+.capital-portfolio-wrapper .project-sidebar-title strong { font-size: 16px; }
+.capital-portfolio-wrapper .project-sidebar-title small,
+.capital-portfolio-wrapper .project-sidebar-title span { font-size: 12px; color: #a9b0b5; }
+.capital-portfolio-wrapper .project-section-sidebar nav { display: grid; gap: 4px; }
+.capital-portfolio-wrapper .project-section-sidebar nav a { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 8px 12px; color: #bfc7cd; text-decoration: none; font-size: 13px; border-radius: 4px; }
+.capital-portfolio-wrapper .project-section-sidebar nav a:hover { background: #272d30; color: white; }
+.capital-portfolio-wrapper .project-section-sidebar nav a[aria-current] { background: #283a35; color: #91d9bd; }
+.capital-portfolio-wrapper .project-section-sidebar a:focus-visible,
+.capital-portfolio-wrapper .project-return:focus-visible { outline: 2px solid #91d9bd; outline-offset: 2px; }
+.capital-portfolio-wrapper .project-sidebar-progress { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; padding: 24px 8px; margin-top: 24px; font-size: 12px; }
+.capital-portfolio-wrapper .project-sidebar-progress progress { width: 100%; height: 6px; accent-color: #91d9bd; }
+.capital-portfolio-wrapper .project-section-content { min-width: 0; }
+.capital-portfolio-wrapper .project-section-content > h1 { margin: 0 0 24px; }
+@media (max-width: 800px) {
+  .capital-portfolio-wrapper .project-workspace { grid-template-columns: minmax(0, 1fr); }
+  .capital-portfolio-wrapper .project-section-sidebar { position: static; min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; }
+  .capital-portfolio-wrapper .project-sidebar-title { padding: 12px 8px; }
+  .capital-portfolio-wrapper .project-section-sidebar nav { display: flex; overflow-x: auto; }
+  .capital-portfolio-wrapper .project-section-sidebar nav a { flex-shrink: 0; }
+  .capital-portfolio-wrapper .project-sidebar-progress { display: none; }
+}

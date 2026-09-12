@@ -1,212 +1,375 @@
-import React, { useState } from "react";
-import { BarChart2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  AlertTriangle as Warning,
+  ArrowLeft,
+  ClipboardList as ClipboardText,
+} from "lucide-react";
+import { projects } from "./data.js";
+import { Tag, Button, StatusTag, Progress, resolveProjectId, projectAliases } from "./ProjectTokens.jsx";
+import ProjectSidebar from "./ProjectSidebar.jsx";
+import {
+  AttentionControls,
+  MilestoneControls,
+  CostOutlook,
+  DeliveryControls,
+  RiskControls,
+} from "./ProjectControls.jsx";
+import TechnicalQueriesSection from "./TechnicalQueriesSection.jsx";
+import PhaseRail from "./PhaseRail.jsx";
+import TaskTable, { TaskEvidence, getTaskEvidence } from "./TaskControlsSection.jsx";
+import WorkforceOverview, { WORKFORCE_PROFILES, getProjectWorkforceTasks } from "./WorkforceSection.jsx";
+import {
+  CostChart,
+  PhaseCostAnalysisPage,
+  getPhaseExpenditures,
+  getPhaseCategoryBreakdown,
+  CATEGORY_CONFIG,
+} from "./PhaseCostAnalysis.jsx";
+import ProjectsList, { LoadingState } from "./ProjectsList.jsx";
 
-const projectRecords = [
-  {
-    id: "harbor-link",
-    name: "Harbor Link Station",
-    milestone: "M-04 Structural and facade coordination",
-    health: "Warning",
-    schedule: "8 days late",
-    budget: "+6.4%",
-    risk: "Medium-high",
-    compliance: "2 checks open",
-    owner: "Civil delivery team",
-    summary: "Facade delivery is the main constraint. Resequencing MEP rough-in can protect the critical path while compliance evidence is completed.",
-    milestones: [
-      { name: "Design freeze", planned: "12 Sep", forecast: "12 Sep", status: "Done", impact: "None" },
-      { name: "Procurement release", planned: "18 Sep", forecast: "20 Sep", status: "Watch", impact: "+1.2%" },
-      { name: "Material delivery", planned: "02 Oct", forecast: "10 Oct", status: "At risk", impact: "+4.1%" },
-      { name: "Site installation", planned: "08 Oct", forecast: "15 Oct", status: "At risk", impact: "+1.1%" },
-    ],
-    intelligence: [
-      "Request fire-rated facade certificate before substitution review.",
-      "Move night-shift workforce from non-critical glazing work.",
-      "Compare revised aluminum pricing against approved contingency.",
-    ],
-  },
-  {
-    id: "tower-b",
-    name: "Tower B Facade Package",
-    milestone: "M-03 Procurement and delivery",
-    health: "Critical",
-    schedule: "14 days late",
-    budget: "+9.8%",
-    risk: "High",
-    compliance: "4 checks open",
-    owner: "Envelope package team",
-    summary: "International shipping variance and certificate gaps are pushing the package into critical review.",
-    milestones: [
-      { name: "Shop drawing approval", planned: "09 Sep", forecast: "11 Sep", status: "Watch", impact: "+0.4%" },
-      { name: "Factory QA", planned: "24 Sep", forecast: "30 Sep", status: "At risk", impact: "+2.6%" },
-      { name: "Shipment release", planned: "28 Sep", forecast: "09 Oct", status: "At risk", impact: "+5.2%" },
-    ],
-    intelligence: [
-      "Escalate customs document review.",
-      "Confirm alternate supplier certificate equivalence.",
-      "Prepare cost note for foreign exchange exposure.",
-    ],
-  },
-  {
-    id: "depot-expansion",
-    name: "Depot Expansion Works",
-    milestone: "M-02 Groundwork readiness",
-    health: "On track",
-    schedule: "2 days early",
-    budget: "-1.3%",
-    risk: "Low",
-    compliance: "Clear",
-    owner: "Site operations",
-    summary: "Groundwork remains ahead of plan. Workforce mix is stable and materials are already staged.",
-    milestones: [
-      { name: "Permit review", planned: "05 Sep", forecast: "05 Sep", status: "Done", impact: "None" },
-      { name: "Equipment mobilization", planned: "16 Sep", forecast: "14 Sep", status: "On track", impact: "-0.6%" },
-      { name: "Groundwork start", planned: "20 Sep", forecast: "18 Sep", status: "On track", impact: "-0.7%" },
-    ],
-    intelligence: [
-      "Keep current excavation crew allocation.",
-      "Capture lesson learned on early permit package review.",
-      "No immediate compliance blockers.",
-    ],
-  },
-];
+// Re-exports for modular backwards-compatibility
+export {
+  WorkforceOverview,
+  WORKFORCE_PROFILES,
+  getProjectWorkforceTasks,
+  CostChart,
+  PhaseCostAnalysisPage,
+  getPhaseExpenditures,
+  getPhaseCategoryBreakdown,
+  CATEGORY_CONFIG,
+  TaskTable,
+  TaskEvidence,
+  getTaskEvidence,
+  PhaseRail,
+  ProjectsList,
+  LoadingState,
+  resolveProjectId,
+  projectAliases,
+};
 
-function ProjectsPage() {
-  const [selectedProjectDetailId, setSelectedProjectDetailId] = useState(null);
-  const selectedProject =
-    projectRecords.find((project) => project.id === selectedProjectDetailId) ?? null;
+function getProjectActivities(project) {
+  return [
+    {
+      id: `${project.id}-ACT-01`,
+      type: "Change order",
+      source: "Client email",
+      from: "Client commercial team",
+      received: "2026-09-11 10:35",
+      relatedTo: project.tasks[1]?.id || project.tasks[0]?.id,
+      summary: `Requested commercial review for ${project.name} cost and schedule movement.`,
+      action: "Route to cost control and compare against approved budget.",
+    },
+    {
+      id: `${project.id}-ACT-02`,
+      type: "Technical query",
+      source: "Engineer message",
+      from: "Design engineer",
+      received: "2026-09-11 14:10",
+      relatedTo: project.tasks[0]?.id,
+      summary: "Asked whether the latest drawing revision changes the installation sequence.",
+      action: "Attach response to the relevant task before updating progress.",
+    },
+    {
+      id: `${project.id}-ACT-03`,
+      type: "Engineer report",
+      source: "Site report PDF",
+      from: project.owner,
+      received: "2026-09-10 18:20",
+      relatedTo: project.issues[0]?.id,
+      summary: "Daily report includes site photos, manpower count, material status, and open blockers.",
+      action: "Use report evidence to validate status, risk, and progress changes.",
+    },
+    {
+      id: `${project.id}-ACT-04`,
+      type: "Source message",
+      source: "Supplier update",
+      from: "Package supplier",
+      received: "2026-09-09 16:45",
+      relatedTo: project.tasks.at(-1)?.id,
+      summary: "Supplier confirmed latest delivery forecast and pending document requirements.",
+      action: "Update the risk register if the forecast affects the current milestone.",
+    },
+  ];
+}
 
-  if (!selectedProject) {
-    return (
-      <section className="project-workstation" aria-label="Projects">
-        <header className="chat-top-header project-page-header" aria-label="Projects header">
-          <div className="chat-header-copy">
-            <span className="header-topic-icon-wrap" aria-hidden="true">
-              <BarChart2 size={13} />
-            </span>
-            <div className="header-title-container">
-              <h1>Projects</h1>
-            </div>
-          </div>
-          <span className="project-health-chip">Project Overview</span>
-        </header>
-
-        <div className="project-overview-page">
-          <div className="project-overview-copy">
-            <span className="project-kicker">Project Overview</span>
-            <h2>Project portfolio</h2>
-            <p>Select one project to open its individual project page with milestones, risks, compliance notes, and recommended next actions.</p>
-          </div>
-
-          <div className="project-overview-grid" aria-label="Project portfolio">
-            {projectRecords.map((project) => (
-              <article className="project-overview-card" key={project.id}>
-                <div>
-                  <span className="project-card-name">{project.name}</span>
-                  <span className="project-card-milestone">{project.milestone}</span>
-                </div>
-                <div className="project-overview-metrics">
-                  <ProjectMetric label="Schedule" value={project.schedule} />
-                  <ProjectMetric label="Budget" value={project.budget} />
-                  <ProjectMetric label="Risk" value={project.risk} />
-                  <ProjectMetric label="Compliance" value={project.compliance} />
-                </div>
-                <button type="button" className="open-project-btn" onClick={() => setSelectedProjectDetailId(project.id)}>
-                  Open Project
-                </button>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-    );
-  }
+export function ActivityLog({ project }) {
+  const activities = getProjectActivities(project);
 
   return (
-    <section className="project-workstation" aria-label="Projects">
-      <header className="chat-top-header project-page-header" aria-label="Projects header">
-        <div className="chat-header-copy">
-          <span className="header-topic-icon-wrap" aria-hidden="true">
-            <BarChart2 size={13} />
-          </span>
-          <div className="header-title-container">
-            <h1>{selectedProject.name}</h1>
-          </div>
+    <section className="panel activity-log-panel">
+      <div className="section-head">
+        <div>
+          <h2>Activity log</h2>
+          <p>Incoming emails, messages, reports, and queries linked to this project.</p>
         </div>
-        <span className="project-health-chip">{selectedProject.health}</span>
-      </header>
-
-      <div className="project-page-body">
-        <main className="project-detail-panel project-detail-page">
-          <button type="button" className="back-to-projects-btn" onClick={() => setSelectedProjectDetailId(null)}>
-            Back to Projects
-          </button>
-
-          <section className="project-hero-card">
-            <div>
-              <span className="project-kicker">Individual Project Page</span>
-              <h2>{selectedProject.name}</h2>
-              <p>{selectedProject.summary}</p>
+        <span>{activities.length} sources</span>
+      </div>
+      <div className="activity-log-list">
+        {activities.map((activity) => (
+          <article key={activity.id}>
+            <div className="activity-log-main">
+              <span className="activity-type">{activity.type}</span>
+              <div>
+                <strong>{activity.summary}</strong>
+                <small>
+                  {activity.source} / {activity.from} / {activity.received}
+                </small>
+              </div>
             </div>
-            <div className="project-metric-grid">
-              <ProjectMetric label="Schedule" value={selectedProject.schedule} />
-              <ProjectMetric label="Budget" value={selectedProject.budget} />
-              <ProjectMetric label="Risk" value={selectedProject.risk} />
-              <ProjectMetric label="Compliance" value={selectedProject.compliance} />
+            <div className="activity-log-meta">
+              <span>{activity.relatedTo}</span>
+              <p>{activity.action}</p>
             </div>
-          </section>
-
-          <section className="project-lower-grid">
-            <article className="milestone-card">
-              <div className="project-card-header">
-                <h3>Milestone Tracker</h3>
-                <span>{selectedProject.owner}</span>
-              </div>
-              <div className="milestone-table" role="table" aria-label="Milestone Tracker">
-                <div className="milestone-row milestone-row-head" role="row">
-                  <span>Milestone</span>
-                  <span>Planned</span>
-                  <span>Forecast</span>
-                  <span>Status</span>
-                  <span>Cost</span>
-                </div>
-                {selectedProject.milestones.map((milestone) => (
-                  <div className="milestone-row" role="row" key={milestone.name}>
-                    <span>{milestone.name}</span>
-                    <span>{milestone.planned}</span>
-                    <span>{milestone.forecast}</span>
-                    <span>{milestone.status}</span>
-                    <span>{milestone.impact}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="project-intelligence-card">
-              <div className="project-card-header">
-                <h3>Risk & Compliance</h3>
-                <span>Agent summary</span>
-              </div>
-              <ul className="project-intelligence-list">
-                {selectedProject.intelligence.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </article>
-          </section>
-        </main>
+          </article>
+        ))}
       </div>
     </section>
   );
 }
 
-function ProjectMetric({ label, value }) {
+export function Issues({ issues }) {
   return (
-    <div className="project-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
+    <section className="panel issues-panel">
+      <div className="section-head">
+        <div>
+          <h2>Issues and lessons learned</h2>
+          <p>Open constraints and retained delivery knowledge.</p>
+        </div>
+        <ClipboardText size={22} />
+      </div>
+      <div className="issue-list">
+        {issues.map((issue) => (
+          <article key={issue.id}>
+            <div className="issue-main">
+              <span className="issue-icon">
+                <Warning size={18} />
+              </span>
+              <div>
+                <strong>{issue.description}</strong>
+                <span>
+                  {issue.id} / Related task {issue.related_task_id}
+                </span>
+              </div>
+            </div>
+            <div className="issue-tags">
+              <Tag
+                type={
+                  issue.severity === "High"
+                    ? "red"
+                    : issue.severity === "Learning"
+                      ? "blue"
+                      : "warm-gray"
+                }
+                size="sm"
+              >
+                {issue.severity}
+              </Tag>
+              <StatusTag status={issue.status} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
-export default ProjectsPage;
+export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
+  const [costPhase, setCostPhase] = useState(project.phase || "Construction");
+
+  const handleExploreMore = (phase) => {
+    if (phase) {
+      setCostPhase(phase);
+    }
+    window.location.hash = "costs";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  };
+
+  const overview = (
+    <>
+      <div className="detail-heading">
+        <div>
+          <div className="title-line">
+            <span>{project.id}</span>
+            <Tag type="warm-gray" size="sm">
+              {project.phase}
+            </Tag>
+          </div>
+          <h1>{project.name}</h1>
+          <p>
+            Current milestone: Work package release · Forecast 23 Sep 2026 · Mock data
+          </p>
+        </div>
+        <div className="detail-progress">
+          <strong>{project.progress}%</strong>
+          <span>Overall progress</span>
+          <Progress value={project.progress} label={false} />
+        </div>
+      </div>
+      <PhaseRail project={project} />
+      <CostChart project={project} onExploreMore={handleExploreMore} />
+      <AttentionControls project={project} />
+      <RiskControls project={project} />
+    </>
+  );
+
+  return (
+    <ProjectSidebar
+      project={project}
+      onBack={onBack}
+      sections={{
+        overview,
+        milestones: (
+          <>
+            <h1>Milestones</h1>
+            <PhaseRail project={project} />
+            <MilestoneControls project={project} />
+          </>
+        ),
+        workforce: (
+          <>
+            <h1>Workforce</h1>
+            <WorkforceOverview project={project} />
+          </>
+        ),
+        costs: (
+          <>
+            <h1>Cost tracking</h1>
+            <CostOutlook project={project} />
+            <PhaseCostAnalysisPage project={project} initialPhase={costPhase} isEmbedded={true} />
+          </>
+        ),
+        deliveries: (
+          <>
+            <h1>Critical deliveries</h1>
+            <DeliveryControls project={project} />
+          </>
+        ),
+        risks: (
+          <>
+            <h1>Risks</h1>
+            <RiskControls project={project} />
+          </>
+        ),
+        tasks: (
+          <>
+            <h1>Task controls</h1>
+            <TaskTable tasks={project.tasks} />
+          </>
+        ),
+        queries: <TechnicalQueriesSection project={project} />,
+        activity: (
+          <>
+            <h1>Activity log</h1>
+            <ActivityLog project={project} />
+          </>
+        ),
+        issues: (
+          <>
+            <h1>Issues &amp; lessons</h1>
+            <Issues issues={project.issues} />
+          </>
+        ),
+      }}
+    />
+  );
+}
+
+function NotFound({ onBack }) {
+  return (
+    <main className="page not-found">
+      <Warning size={32} />
+      <span>404</span>
+      <h1>Project not found</h1>
+      <p>The requested project record is not available in this portfolio.</p>
+      <Button onClick={onBack} renderIcon={ArrowLeft}>
+        Return to projects
+      </Button>
+    </main>
+  );
+}
+
+export default function ProjectsPage() {
+  const [selectedProjectId, setSelectedProjectId] = useState(() => {
+    const match = window.location.pathname.match(/\/projects\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  });
+
+  const [costAnalysisPhase, setCostAnalysisPhase] = useState(() => {
+    if (window.location.pathname.includes("/costs")) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get("phase") || "Construction";
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const match = window.location.pathname.match(/\/projects\/([a-zA-Z0-9_-]+)/);
+      const isCostPage = window.location.pathname.includes("/costs");
+      setSelectedProjectId(match ? match[1] : null);
+      if (isCostPage) {
+        const urlParams = new URLSearchParams(window.location.search);
+        setCostAnalysisPhase(urlParams.get("phase") || "Construction");
+      } else {
+        setCostAnalysisPhase(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleSelectProject = (id) => {
+    setSelectedProjectId(id);
+    setCostAnalysisPhase(null);
+    window.history.pushState(null, "", `/projects/${id}`);
+  };
+
+  const handleBackToProjects = () => {
+    setSelectedProjectId(null);
+    setCostAnalysisPhase(null);
+    window.history.pushState(null, "", "/projects");
+  };
+
+  const handleOpenCostAnalysis = (phase) => {
+    const targetPhase = phase || "Construction";
+    setCostAnalysisPhase(targetPhase);
+    window.history.pushState(
+      null,
+      "",
+      `/projects/${selectedProjectId}/costs?phase=${encodeURIComponent(targetPhase)}`
+    );
+  };
+
+  const handleBackToProjectDetail = () => {
+    setCostAnalysisPhase(null);
+    window.history.pushState(null, "", `/projects/${selectedProjectId}#costs`);
+  };
+
+  let content;
+  if (selectedProjectId) {
+    const project = projects.find((p) => p.id === resolveProjectId(selectedProjectId));
+    if (!project) {
+      content = <NotFound onBack={handleBackToProjects} />;
+    } else if (costAnalysisPhase) {
+      content = (
+        <PhaseCostAnalysisPage
+          project={project}
+          initialPhase={costAnalysisPhase}
+          onBack={handleBackToProjectDetail}
+        />
+      );
+    } else {
+      content = (
+        <ProjectDetail
+          project={project}
+          onBack={handleBackToProjects}
+          onOpenCostAnalysis={handleOpenCostAnalysis}
+        />
+      );
+    }
+  } else {
+    content = <ProjectsList onSelectProject={handleSelectProject} />;
+  }
+
+  return <div className="capital-portfolio-wrapper">{content}</div>;
+}
