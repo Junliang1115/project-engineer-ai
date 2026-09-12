@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import LessonsPage from "./LessonRegister.jsx";
 import {
   AlertTriangle,
   BookOpen,
@@ -156,6 +157,7 @@ const conversationTopics = [
 ];
 
 function ChatPage() {
+  const [activeView, setActiveView] = useState("chat");
   const [projects] = useState(conversationProjects);
   const [topics, setTopics] = useState(conversationTopics);
   const [selectedTopicId, setSelectedTopicId] = useState(conversationTopics[0].id);
@@ -213,6 +215,7 @@ function ChatPage() {
   const currentMessages = messagesByTopic[selectedTopic?.id] || [];
 
   function handleNewChat(targetProjectId = null) {
+    setActiveView("chat");
     const projectId = targetProjectId || selectedTopic?.projectId || projects[0].id;
     const newId = `convo-${Date.now()}`;
     const newTopic = {
@@ -271,73 +274,77 @@ function ChatPage() {
         onToggle={() => setIsSidebarOpen((prev) => !prev)}
         projects={projects}
         topics={topics}
-        selectedTopicId={selectedTopic.id}
+        selectedTopicId={activeView === "chat" ? selectedTopic.id : null}
+        lessonsActive={activeView === "lessons"}
+        onOpenLessons={() => setActiveView("lessons")}
         expandedProjects={expandedProjects}
         onToggleProject={handleToggleProject}
-        onSelectTopic={setSelectedTopicId}
+        onSelectTopic={(id) => { setSelectedTopicId(id); setActiveView("chat"); }}
         onNewChat={handleNewChat}
         onRenameTopic={handleRenameTopic}
       />
       <div className="chat-main-area">
-        <header className="chat-top-header" aria-label="Conversation header">
-          <div className="chat-header-copy">
-            {!isSidebarOpen && (
-              <button type="button" className="sidebar-expand-btn" onClick={() => setIsSidebarOpen(true)} title="Expand sidebar" aria-label="Expand sidebar">
-                <PanelLeftOpen size={16} aria-hidden="true" />
-              </button>
-            )}
-            <div className="header-breadcrumbs">
-              <span className="header-project-pill" title={activeProject.name}>
-                <Building2 size={12} aria-hidden="true" />
-                <span>{activeProject.name}</span>
-              </span>
-              <span className="header-breadcrumb-separator" aria-hidden="true">/</span>
-              <span className="header-topic-icon-wrap" aria-hidden="true">
-                <MessageSquare size={13} />
-              </span>
-              {isEditingHeader ? (
-                <div className="header-rename-wrap">
-                  <input
-                    ref={headerInputRef}
-                    type="text"
-                    className="header-rename-input"
-                    value={headerDraft}
-                    onChange={(event) => setHeaderDraft(event.target.value)}
-                    onBlur={commitHeaderRename}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        commitHeaderRename();
-                      } else if (event.key === "Escape") {
-                        event.preventDefault();
-                        setIsEditingHeader(false);
-                      }
-                    }}
-                    aria-label="Rename conversation topic"
-                  />
-                  <button type="button" className="header-rename-save-btn" onClick={commitHeaderRename} title="Save title" aria-label="Save title">
-                    <Check size={13} />
-                  </button>
-                </div>
-              ) : (
-                <div className="header-title-container">
-                  <h1 onClick={startEditingHeader} title="Click to rename topic">
-                    {selectedTopic.title}
-                  </h1>
-                  <button type="button" className="header-rename-trigger" onClick={startEditingHeader} title="Rename conversation topic" aria-label="Rename conversation topic">
-                    <Pencil size={13} />
-                  </button>
-                </div>
+        {activeView === "lessons" ? <LessonsPage topics={topics} projects={projects} messagesByTopic={messagesByTopic} sidebarOpen={isSidebarOpen} onExpandSidebar={() => setIsSidebarOpen(true)} onOpenChat={(id) => { setSelectedTopicId(id); setActiveView("chat"); }} /> : <>
+          <header className="chat-top-header" aria-label="Conversation header">
+            <div className="chat-header-copy">
+              {!isSidebarOpen && (
+                <button type="button" className="sidebar-expand-btn" onClick={() => setIsSidebarOpen(true)} title="Expand sidebar" aria-label="Expand sidebar">
+                  <PanelLeftOpen size={16} aria-hidden="true" />
+                </button>
               )}
+              <div className="header-breadcrumbs">
+                <span className="header-project-pill" title={activeProject.name}>
+                  <Building2 size={12} aria-hidden="true" />
+                  <span>{activeProject.name}</span>
+                </span>
+                <span className="header-breadcrumb-separator" aria-hidden="true">/</span>
+                <span className="header-topic-icon-wrap" aria-hidden="true">
+                  <MessageSquare size={13} />
+                </span>
+                {isEditingHeader ? (
+                  <div className="header-rename-wrap">
+                    <input
+                      ref={headerInputRef}
+                      type="text"
+                      className="header-rename-input"
+                      value={headerDraft}
+                      onChange={(event) => setHeaderDraft(event.target.value)}
+                      onBlur={commitHeaderRename}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          commitHeaderRename();
+                        } else if (event.key === "Escape") {
+                          event.preventDefault();
+                          setIsEditingHeader(false);
+                        }
+                      }}
+                      aria-label="Rename conversation topic"
+                    />
+                    <button type="button" className="header-rename-save-btn" onClick={commitHeaderRename} title="Save title" aria-label="Save title">
+                      <Check size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="header-title-container">
+                    <h1 onClick={startEditingHeader} title="Click to rename topic">
+                      {selectedTopic.title}
+                    </h1>
+                    <button type="button" className="header-rename-trigger" onClick={startEditingHeader} title="Rename conversation topic" aria-label="Rename conversation topic">
+                      <Pencil size={13} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <FullChat
-          key={selectedTopic.id}
-          messages={currentMessages}
-          onUpdateMessages={handleUpdateMessages}
-        />
+          <FullChat
+            key={selectedTopic.id}
+            messages={currentMessages}
+            onUpdateMessages={handleUpdateMessages}
+          />
+        </>}
       </div>
     </section>
   );
@@ -557,6 +564,8 @@ function FullChat({ messages, onUpdateMessages }) {
 }
 
 function ConversationSidebar({
+  lessonsActive,
+  onOpenLessons,
   isOpen = true,
   onToggle,
   projects,
@@ -592,15 +601,22 @@ function ConversationSidebar({
 
   return (
     <aside className={`conversation-sidebar ${isOpen ? "open" : "collapsed"}`} aria-label="Conversation topics" aria-hidden={!isOpen}>
-      <div className="sidebar-top-actions">
+      <div className="sidebar-top-bar">
         {onToggle && (
           <button type="button" className="sidebar-collapse-btn" onClick={onToggle} title="Collapse sidebar" aria-label="Collapse sidebar">
             <PanelLeftClose size={16} aria-hidden="true" />
           </button>
         )}
+      </div>
+
+      <div className="sidebar-nav-section">
         <button type="button" className="sidebar-nav-item sidebar-new-chat-action" onClick={() => onNewChat()} title="New chat in active project">
           <SquarePen size={16} className="sidebar-nav-icon" aria-hidden="true" />
           <span className="sidebar-nav-title">New chat</span>
+        </button>
+        <button type="button" className="sidebar-nav-item" onClick={onOpenLessons} aria-current={lessonsActive ? "page" : undefined}>
+          <BookOpen size={16} className="sidebar-nav-icon" aria-hidden="true" />
+          <span className="sidebar-nav-title">Lessons</span>
         </button>
       </div>
 
