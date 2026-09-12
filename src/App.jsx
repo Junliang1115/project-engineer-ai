@@ -1,14 +1,33 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { BarChart2, MessageSquare } from "lucide-react";
 import ChatPage from "./ChatPage.jsx";
 import ProjectsPage from "./ProjectsPage.jsx";
 
+function getInitialPage() {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/projects")) {
+    return "projects";
+  }
+
+  return "chat";
+}
+
 function App() {
-  const [activePage, setActivePage] = useState("chat");
+  const [activePage, setActivePage] = useState(getInitialPage);
+
+  useEffect(() => {
+    const syncPageFromPath = () => setActivePage(getInitialPage());
+    window.addEventListener("popstate", syncPageFromPath);
+    return () => window.removeEventListener("popstate", syncPageFromPath);
+  }, []);
+
+  const handleSelectPage = (page) => {
+    setActivePage(page);
+    window.history.pushState(null, "", page === "projects" ? "/projects" : "/");
+  };
 
   return (
     <div className="app-shell">
-      <AppNavbar activePage={activePage} onSelectPage={setActivePage} />
+      <AppNavbar activePage={activePage} onSelectPage={handleSelectPage} />
       <main className="page page-chat">
         {activePage === "projects" ? <ProjectsPage /> : <ChatPage />}
       </main>
