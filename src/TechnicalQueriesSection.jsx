@@ -32,6 +32,8 @@ const DEFAULT_QUERIES = [
     author: "Senior Piping Engineer (M. Chen)",
     query:
       "During ultrasonic thickness testing of receiving spool CW-014, measured wall thickness was 9.12mm against nominal schedule 80 spec (9.53mm). Requesting confirmation whether 9.12mm complies with minimum mill tolerance (-12.5%) under ASME B31.3 or if derating/replacement is required.",
+    reasoning:
+      "ASME B31.3 Section 304.1.2 defines the required pressure design thickness: tm = t + c. At 45.0 barg design pressure and 120°C, the calculated pressure containment thickness (t) is 4.84 mm. Adding the 3.00 mm project corrosion allowance (c) yields an absolute minimum required thickness of 7.84 mm. Although the ultrasonic test reading of 9.12 mm is below nominal 9.53 mm, it exceeds the 7.84 mm code minimum by +1.28 mm and complies with ASTM A106 Gr. B manufacturing mill undertolerance (-12.5% = 8.34 mm lower limit). Therefore, full hoop stress integrity is satisfied without operating pressure derating.",
     disposition:
       "Calculation check by Stress Engineering confirms min required thickness is 7.84mm under 45.0 barg design pressure. Material acceptable under ASME B31.3 mill tolerance clause 304.1.2. Engineering disposition approved pending QA punch closeout.",
     pdf: {
@@ -80,6 +82,8 @@ const DEFAULT_QUERIES = [
     author: "Materials & Corrosion Lead (K. Larson)",
     query:
       "Vendor supplied Spiral Wound 316L/Graphite gaskets instead of specified Inconel 625 inner ring gaskets for sour gas service (>500 ppm H2S). Can 316L with PTFE/Graphite filler be approved for non-cyclic flare lines below 120°C?",
+    reasoning:
+      "Under NACE MR0175 / ISO 15156 Section 6.4, wet hydrocarbon gas with 520 ppm H2S exceeds the 0.05 psia H2S partial pressure threshold for sour service cracking. Standard austenitic 316L stainless steel undergoes localized pitting, chloride stress corrosion cracking (CSCC), and sulfide stress cracking (SSC) under tensile flange stress. Inconel 625 (UNS N06625) provides >58% nickel and >20% chromium content, ensuring complete immunity to hydrogen embrittlement and crevice corrosion across all flare release cycles.",
     disposition:
       "Rejected for main flare line. Inconel 625 inner ring is strictly mandated by Project NACE MR0175 / ISO 15156 compliance matrix. Vendor dispatched Inconel 625 replacement gaskets under quarantine replacement NCR-008.",
     pdf: {
@@ -127,6 +131,8 @@ const DEFAULT_QUERIES = [
     author: "Subsea Controls Specialist (R. Vance)",
     query:
       "BOP manufacturer documentation indicates usable hydraulic volume of 185 liters at 3,000 psi precharge, but API 16D Section 5.3 requires 1.5x functional safety factor after shear ram closure. Clarify if surface accumulator rack is counted toward the closing volume.",
+    reasoning:
+      "API 16D Section 5.3 mandates a 1.5x volumetric safety factor using exclusively seabed-located accumulators to guarantee fail-safe shear ram closure during an Emergency Disconnect Sequence (EDS). Because deepwater seabed temperatures (4°C at 1,850m) cause nitrogen gas contraction and volumetric efficiency loss, relying on surface accumulators is non-compliant due to umbilical pressure drop and hydraulic signal latency (>25 seconds response delay). Dedicated seabed bottle capacity must be verified independently.",
     disposition:
       "Awaiting formal response from original equipment manufacturer. Subsea engineering team currently reviewing fast-dump valve circuit simulation and acoustic backup trigger latency.",
     pdf: {
@@ -174,6 +180,8 @@ const DEFAULT_QUERIES = [
     author: "Lead Instrumentation Engineer (D. Al-Mansoor)",
     query:
       "Field installation team noted that supplied junction box JB-402 is certified Ex d IIB T4 with IP65 gland entries, whereas the hazardous area schedule specifies IP66 for tropical offshore monsoon exposure. Confirm if silicone sealant thread barrier is permissible or if IP66 breather drains are needed.",
+    reasoning:
+      "While an Ex d flameproof enclosure is certified to contain internal gas ignition, IP65 ingress rating only resists low-pressure water jets. In tropical offshore marine environments with daily thermal breathing cycles, diurnal cooling creates a partial internal vacuum that aspirates salt-laden humid air past standard threads. Installing certified Ex d IP66 Breather Drains equalizes differential pressure while draining condensation, preventing moisture accumulation and terminal insulation degradation.",
     disposition:
       "Engineering disposition recommends fitting certified Ex d IP66 Breather Drain Plugs (CMP or Hawke approved) to prevent moisture condensation. Supplier certificate review underway.",
     pdf: {
@@ -220,6 +228,8 @@ const DEFAULT_QUERIES = [
     author: "Structural Package Engineer (S. O'Connor)",
     query:
       "Civil contractor requested clarification on whether hydraulic tensioning or calibrated torque wrench is required for M48 Grade 8.8 anchor bolts subjected to cryogenic thermal contraction down to -162°C.",
+    reasoning:
+      "At cryogenic operating temperatures down to -162°C, austenitic stainless cold box skirts experience thermal contraction of approximately 2.8 mm/meter, inducing severe cyclic thermal relief and uplift moments on foundation anchor bolts. Calibrated torque wrenches exhibit torque-friction scatter exceeding ±30% due to marine thread galling and atmospheric salt deposit. Synchronized hydraulic tensioning applies pure axial elongation to ensure an exact 480 kN residual clamping preload per bolt after cooldown.",
     disposition:
       "Hydraulic multi-tool tensioning to 480 kN residual preload is mandatory as per Cryogenic Equipment Foundation Standard. Torque method is not permitted due to unpredictable thread friction in coastal environment.",
     pdf: {
@@ -282,15 +292,15 @@ export function PdfViewerModal({ pdfDoc, onClose }) {
     const blob = new Blob(
       [
         `OFFICIAL PROJECT SPECIFICATION / PDF SOURCE EXPORT\n` +
-          `Document: ${pdfDoc.filename}\n` +
-          `Number: ${pdfDoc.docNumber} (${pdfDoc.revision})\n` +
-          `Title: ${pdfDoc.documentTitle}\n` +
-          `Discipline: ${pdfDoc.discipline}\n` +
-          `Date: ${pdfDoc.date}\n\n` +
-          `HIGHLIGHTED TECHNICAL QUERY REFERENCE:\n${pdfDoc.calloutExcerpt}\n\n` +
-          `SPECIFICATION PARAMETERS:\n` +
-          pdfDoc.specTable.map((r) => `- ${r.param}: ${r.value}`).join("\n") +
-          `\n\nApproved: ${pdfDoc.chiefSignoff}\nVerified Source Document Record.`,
+        `Document: ${pdfDoc.filename}\n` +
+        `Number: ${pdfDoc.docNumber} (${pdfDoc.revision})\n` +
+        `Title: ${pdfDoc.documentTitle}\n` +
+        `Discipline: ${pdfDoc.discipline}\n` +
+        `Date: ${pdfDoc.date}\n\n` +
+        `HIGHLIGHTED TECHNICAL QUERY REFERENCE:\n${pdfDoc.calloutExcerpt}\n\n` +
+        `SPECIFICATION PARAMETERS:\n` +
+        pdfDoc.specTable.map((r) => `- ${r.param}: ${r.value}`).join("\n") +
+        `\n\nApproved: ${pdfDoc.chiefSignoff}\nVerified Source Document Record.`,
       ],
       { type: "text/plain" }
     );
@@ -499,6 +509,7 @@ export default function TechnicalQueriesSection({ project }) {
     discipline: "Piping & Materials",
     author: "Project Engineer",
     query: "",
+    reasoning: "",
     disposition: "Pending initial technical assessment by discipline lead.",
     pdfName: "Standard-Engineering-Spec-2026.pdf",
     docNumber: "SPEC-ENG-2026-099",
@@ -550,6 +561,9 @@ export default function TechnicalQueriesSection({ project }) {
       date: new Date().toISOString().slice(0, 10),
       author: newDraft.author,
       query: newDraft.query,
+      reasoning:
+        newDraft.reasoning ||
+        "Engineering reasoning and technical code evaluation in progress by discipline authority.",
       disposition: newDraft.disposition,
       pdf: {
         filename: newDraft.pdfName || "General-Specification.pdf",
@@ -590,6 +604,7 @@ export default function TechnicalQueriesSection({ project }) {
       discipline: "Piping & Materials",
       author: "Project Engineer",
       query: "",
+      reasoning: "",
       disposition: "Pending initial technical assessment by discipline lead.",
       pdfName: "Standard-Engineering-Spec-2026.pdf",
       docNumber: "SPEC-ENG-2026-099",
@@ -703,70 +718,51 @@ export default function TechnicalQueriesSection({ project }) {
                   </div>
                 </div>
 
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    padding: "3px 10px",
-                    borderRadius: "12px",
-                    background:
+                <div className="tq-card-header-actions">
+                  <span
+                    className={`tq-status-pill ${
                       q.status === "Approved / Closed"
-                        ? "rgba(46, 125, 50, 0.2)"
+                        ? "status-approved"
                         : q.status === "Open"
-                          ? "rgba(229, 90, 42, 0.2)"
-                          : "rgba(33, 150, 243, 0.2)",
-                    color:
-                      q.status === "Approved / Closed"
-                        ? "#4caf50"
-                        : q.status === "Open"
-                          ? "#ff9800"
-                          : "#29b6f6",
-                    border:
-                      q.status === "Approved / Closed"
-                        ? "1px solid rgba(76, 175, 80, 0.3)"
-                        : q.status === "Open"
-                          ? "1px solid rgba(255, 152, 0, 0.3)"
-                          : "1px solid rgba(41, 182, 246, 0.3)",
-                  }}
-                >
-                  {q.status}
-                </span>
+                          ? "status-open"
+                          : "status-review"
+                    }`}
+                  >
+                    {q.status}
+                  </span>
+
+                  {q.pdf && (
+                    <button
+                      type="button"
+                      className="btn-view-pdf-compact"
+                      onClick={() => setSelectedPdf(q.pdf)}
+                      title={`Open source PDF: ${q.pdf.filename}`}
+                    >
+                      <Eye size={11} /> View
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Query Content & Engineering Disposition */}
+              {/* Query Content, Engineering Reasoning & Disposition */}
               <div className="tq-content-box">
                 <p className="tq-query-text">
                   <strong>Query:</strong> {q.query}
                 </p>
+
+                {q.reasoning && (
+                  <div className="tq-reasoning">
+                    <div className="tq-reasoning-head">
+                      <ShieldCheck size={13} /> Engineering Reasoning &amp; Code Basis
+                    </div>
+                    <p>{q.reasoning}</p>
+                  </div>
+                )}
+
                 <div className="tq-disposition">
                   <div className="tq-disposition-head">Technical Disposition &amp; Resolution</div>
                   <p>{q.disposition}</p>
                 </div>
-              </div>
-
-              {/* PDF Document Source Box */}
-              <div className="tq-pdf-source-box">
-                <div className="tq-pdf-info">
-                  <div className="tq-pdf-icon-wrap" aria-hidden="true">
-                    <FileText size={20} />
-                  </div>
-                  <div className="tq-pdf-details">
-                    <div className="tq-pdf-filename">{q.pdf.filename}</div>
-                    <div className="tq-pdf-citation">
-                      <strong>Document Ref:</strong> {q.pdf.docNumber} ({q.pdf.revision}) · {q.pdf.page}
-                    </div>
-                    <div className="tq-pdf-quote">"{q.pdf.calloutExcerpt}"</div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn-view-pdf"
-                  onClick={() => setSelectedPdf(q.pdf)}
-                  title={`Open ${q.pdf.filename}`}
-                >
-                  <Eye size={14} /> View Source PDF
-                </button>
               </div>
             </article>
           ))
@@ -831,6 +827,16 @@ export default function TechnicalQueriesSection({ project }) {
                   placeholder="Detail the technical observation, conflict between drawings/specifications, or calculation query..."
                   value={newDraft.query}
                   onChange={(e) => setNewDraft({ ...newDraft, query: e.target.value })}
+                />
+              </label>
+
+              <label>
+                Engineering Reasoning &amp; Code Basis
+                <textarea
+                  rows={2}
+                  placeholder="Explain the engineering rationale, code clauses (e.g. ASME, API, ISO), or calculation basis..."
+                  value={newDraft.reasoning}
+                  onChange={(e) => setNewDraft({ ...newDraft, reasoning: e.target.value })}
                 />
               </label>
 

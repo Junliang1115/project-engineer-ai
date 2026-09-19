@@ -261,6 +261,105 @@
   margin: 0;
 }
 
+.tq-card-header-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.tq-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.tq-status-pill.status-approved {
+  background: rgba(46, 125, 50, 0.18);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.35);
+}
+
+.tq-status-pill.status-open {
+  background: rgba(229, 90, 42, 0.18);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.35);
+}
+
+.tq-status-pill.status-review {
+  background: rgba(33, 150, 243, 0.18);
+  color: #29b6f6;
+  border: 1px solid rgba(41, 182, 246, 0.35);
+}
+
+.btn-view-pdf-compact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 1.5px 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 500;
+  font-family: inherit;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.2;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  transition: all 0.15s ease;
+}
+
+.btn-view-pdf-compact:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.btn-view-pdf-compact svg {
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.tq-reasoning {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 12px;
+  background: rgba(16, 163, 127, 0.04);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+
+.tq-reasoning-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  font-weight: 600;
+  font-family: "IBM Plex Mono", monospace;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.tq-reasoning p {
+  font-size: 12.5px;
+  color: #d1dad6;
+  margin: 0;
+  line-height: 1.5;
+}
+
 .tq-disposition {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   padding-top: 8px;

@@ -349,6 +349,10 @@ export const WORKFORCE_PROFILES = {
 };
 
 export function getProjectWorkforceTasks(project) {
+  if (project?.workforce?.length) {
+    return project.workforce;
+  }
+
   const currentPhase = project?.phase || "Construction";
   const currentPhaseIdx = phases.indexOf(currentPhase) !== -1 ? phases.indexOf(currentPhase) : 4;
 
@@ -478,7 +482,7 @@ export function getProjectWorkforceTasks(project) {
     if (isPast) {
       status = "Completed";
     } else if (isCurrent) {
-      status = needToHire > 0 ? "Hire freelancers" : "Covered";
+      status = needToHire > 0 ? "Hire workers" : "Covered";
     } else {
       status = needToHire > 0 ? "Hire in advance" : "Covered";
     }
@@ -506,6 +510,8 @@ export function WorkforceOverview({ project }) {
   const currentPhase = project?.phase || "Construction";
   const currentPhaseIdx = phases.indexOf(currentPhase) !== -1 ? phases.indexOf(currentPhase) : 4;
   const nextPhase = phases[currentPhaseIdx + 1] || "Handover";
+  const currentMilestone = project?.currentMilestone || project?.milestone || "M-04 Work package release";
+  const nextMilestone = project?.nextMilestone || "M-05 Handover & Commissioning Gate";
 
   const allRows = getProjectWorkforceTasks(project);
   const [selectedPhase, setSelectedPhase] = useState("ALL");
@@ -538,7 +544,7 @@ export function WorkforceOverview({ project }) {
           <div className="workforce-title-row">
             <h2>Site Worker Management</h2>
             <Tag type={currentToHire ? "red" : "teal"} size="sm">
-              {currentToHire ? `${currentToHire} Freelancers needed (Current Phase)` : "Current phase covered"}
+              {currentToHire ? `${currentToHire} Workers needed (Current Phase)` : "Current phase covered"}
             </Tag>
             {nextToHire > 0 && (
               <Tag type="blue" size="sm">
@@ -552,46 +558,6 @@ export function WorkforceOverview({ project }) {
         </div>
       </div>
 
-      {/* Advance Planning & Future Milestone Callout Banner */}
-      <div className="workforce-advance-banner">
-        <div className="advance-banner-left">
-          <div className="advance-banner-badge">
-            <Forward size={16} />
-            <span>Future Milestone &amp; Advance Workforce Planning</span>
-          </div>
-          <h3>Advance Recruitment for Upcoming Phase: {nextPhase}</h3>
-          <p>
-            Currently executing the <strong>{currentPhase}</strong> phase with <strong>{currentToHire} immediate freelancer openings</strong>. Looking ahead to <strong>{nextPhase}</strong>, there are <strong>{nextToHire} specialist roles to hire in advance</strong> to guarantee certified personnel are vetted 4–6 weeks prior to milestone gate handover.
-          </p>
-        </div>
-        <div className="advance-banner-actions">
-          <button
-            type="button"
-            className={`advance-nav-btn ${selectedPhase === currentPhase ? "active" : ""}`}
-            onClick={() => setSelectedPhase(currentPhase)}
-          >
-            <span>Current Phase</span>
-            <strong>{currentPhase} ({currentToHire} hires)</strong>
-          </button>
-          <button
-            type="button"
-            className={`advance-nav-btn highlight ${selectedPhase === nextPhase ? "active" : ""}`}
-            onClick={() => setSelectedPhase(nextPhase)}
-          >
-            <span>Next Phase (Advance Plan)</span>
-            <strong>{nextPhase} ({nextToHire} advance hires)</strong>
-          </button>
-          <button
-            type="button"
-            className={`advance-nav-btn ${selectedPhase === "ALL" ? "active" : ""}`}
-            onClick={() => setSelectedPhase("ALL")}
-          >
-            <span>Lifecycle View</span>
-            <strong>All Phases ({allRows.length} tasks)</strong>
-          </button>
-        </div>
-      </div>
-
       {/* Summary KPI Strip */}
       <div className="workforce-summary-strip">
         <div className="workforce-kpi">
@@ -599,7 +565,7 @@ export function WorkforceOverview({ project }) {
           <strong>{currentPhase}</strong>
         </div>
         <div className="workforce-kpi highlight">
-          <span>Freelancers Needed (Current)</span>
+          <span>Workers Needed (Current)</span>
           <strong className="avail-accent">{currentToHire}</strong>
         </div>
         <div className="workforce-kpi highlight-blue">
@@ -806,55 +772,89 @@ export function WorkforceOverview({ project }) {
       </section>
 
       {/* Hiring Action List */}
-      <section className="workforce-dashboard-block">
-        <h3>Hiring Action List</h3>
-        <p className="hiring-actions-intro">
-          Actionable hiring pipeline separated by immediate site needs ({currentPhase}) and advance future planning ({nextPhase}).
-        </p>
+      <section className="workforce-dashboard-block hiring-actions-block">
+        <div className="hiring-actions-header">
+          <h3>Hiring Action List</h3>
+          <p className="hiring-actions-intro">
+            Structured delivery pipeline showing immediate milestone staffing and advance recruitment for future milestones.
+          </p>
+        </div>
 
-        <div className="hiring-action-columns">
-          {/* Column 1: Immediate Hires */}
-          <div className="hiring-action-column">
-            <div className="column-header urgent">
-              <div>
-                <strong>Immediate Hires • Current Phase ({currentPhase})</strong>
-                <span>{immediateActions.length} open tasks • {currentToHire} roles</span>
+        {/* 1 & 2: Current Milestone & Immediate Hires (Non-red colors) */}
+        <div className="hiring-milestone-group current-milestone-group">
+          {/* 1. Show the current milestone: what phase */}
+          <div className="milestone-indicator-bar current-indicator">
+            <div className="milestone-indicator-left">
+              <span className="milestone-phase-badge current">Phase: {currentPhase}</span>
+              <div className="milestone-title-wrap">
+                <span className="milestone-kicker">CURRENT MILESTONE</span>
+                <h4 className="milestone-name">{currentMilestone}</h4>
               </div>
-              <Tag type="red" size="sm">Urgent on site</Tag>
+            </div>
+            <div className="milestone-indicator-right">
+              <span className="milestone-stats-pill">
+                <strong>{currentToHire}</strong> immediate {currentToHire === 1 ? "hire" : "hires"} needed
+              </span>
+              <Tag type="teal" size="sm">Active Phase</Tag>
+            </div>
+          </div>
+
+          {/* 2. Immediate hires cards (NOT in red colors - Emerald / Teal palette) */}
+          <div className="hiring-cards-section">
+            <div className="hiring-cards-subhead">
+              <strong>Immediate Hires</strong>
+              <span>{immediateActions.length} open {immediateActions.length === 1 ? "task" : "tasks"} • On-site onboarding</span>
             </div>
             {immediateActions.length ? (
-              <div className="site-worker-actions-stacked">
+              <div className="site-worker-actions-grid">
                 {immediateActions.map((row) => (
-                  <article key={`immediate-${row.id || row.task}-${row.workerType}`} className="hiring-card urgent-card">
+                  <article key={`immediate-${row.id || row.task}-${row.workerType}`} className="hiring-card immediate-card-teal">
                     <div className="hiring-card-top">
                       <strong>Hire {row.needToHire} {row.workerType}</strong>
-                      <span className="hiring-phase-pill current-pill">{row.phase}</span>
+                      <span className="hiring-phase-pill teal-pill">{row.phase}</span>
                     </div>
                     <span className="hiring-spec">{row.spec}</span>
                     <p className="hiring-task-name">{row.task}</p>
                     <div className="hiring-footer">
-                      <span className="hiring-lead-time">{row.leadTime}</span>
-                      <span className="hiring-status-badge">Immediate onboarding</span>
+                      <span className="hiring-lead-time teal-lead">{row.leadTime}</span>
+                      <span className="hiring-status-badge teal-badge">Immediate onboarding</span>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <p className="empty-skills-msg">All roles in {currentPhase} are staffed and covered.</p>
+              <p className="empty-skills-msg">All roles for {currentMilestone} are staffed and covered.</p>
             )}
           </div>
+        </div>
 
-          {/* Column 2: Advance Hires */}
-          <div className="hiring-action-column">
-            <div className="column-header advance">
-              <div>
-                <strong>Advance Hires • Next Phase &amp; Milestones ({nextPhase})</strong>
-                <span>{advanceActions.length} upcoming tasks • {nextToHire} roles</span>
+        {/* 3 & 4: Future Upcoming Milestone & Advance Hires */}
+        <div className="hiring-milestone-group upcoming-milestone-group">
+          {/* 3. The next is the future upcoming milestone and you show what the phase is */}
+          <div className="milestone-indicator-bar upcoming-indicator">
+            <div className="milestone-indicator-left">
+              <span className="milestone-phase-badge upcoming">Upcoming Phase: {nextPhase}</span>
+              <div className="milestone-title-wrap">
+                <span className="milestone-kicker upcoming-kicker">FUTURE UPCOMING MILESTONE</span>
+                <h4 className="milestone-name">{nextMilestone}</h4>
               </div>
-              <Tag type="blue" size="sm">Advance planning</Tag>
+            </div>
+            <div className="milestone-indicator-right">
+              <span className="milestone-stats-pill advance-pill">
+                <strong>{nextToHire}</strong> advance {nextToHire === 1 ? "hire" : "hires"} planned
+              </span>
+              <Tag type="blue" size="sm">Advance Sourcing</Tag>
+            </div>
+          </div>
+
+          {/* 4. The next row will be advance hires */}
+          <div className="hiring-cards-section">
+            <div className="hiring-cards-subhead">
+              <strong>Advance Hires</strong>
+              <span>{advanceActions.length} upcoming {advanceActions.length === 1 ? "task" : "tasks"} • Early talent pipeline</span>
             </div>
             {advanceActions.length ? (
-              <div className="site-worker-actions-stacked">
+              <div className="site-worker-actions-grid">
                 {advanceActions.map((row) => (
                   <article key={`advance-${row.id || row.task}-${row.workerType}`} className="hiring-card advance-card">
                     <div className="hiring-card-top">
