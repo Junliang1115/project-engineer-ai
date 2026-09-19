@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LayoutDashboard, CalendarDays, CircleDollarSign, Truck, ShieldAlert, ListChecks, FileQuestion, MessagesSquare, BookOpen, ArrowLeft, Users } from "lucide-react";
+import { LayoutDashboard, CalendarDays, CircleDollarSign, FileDiff, ShieldAlert, ListChecks, FileQuestion, MessagesSquare, BookOpen, ArrowLeft, Users, RotateCw } from "lucide-react";
 import "./ProjectSidebar.css";
 
 const links = [
@@ -7,9 +7,8 @@ const links = [
   ["milestones", "Milestones", CalendarDays],
   ["workforce", "Workforce", Users],
   ["costs", "Cost tracking", CircleDollarSign],
-  ["deliveries", "Critical deliveries", Truck],
+  ["deliveries", "Change orders", FileDiff],
   ["risks", "Risks", ShieldAlert],
-  ["tasks", "Task controls", ListChecks],
   ["queries", "Technical queries", FileQuestion],
   ["activity", "Activity log", MessagesSquare],
   ["issues", "Issues & lessons", BookOpen],
@@ -39,7 +38,20 @@ export default function ProjectSidebar({ project, onBack, sections }) {
           <Icon size={18} aria-hidden="true" /><span>{label}</span>
         </a>
       )}</nav>
-      <div className="project-sidebar-progress"><span>Overall progress</span><strong>{project.progress}%</strong><progress value={project.progress} max="100" aria-label="Overall project progress" /></div>
+      <div className="project-sidebar-bottom">
+        <div className="project-sidebar-progress">
+          <span>Overall progress</span>
+          <strong>{project.progress}%</strong>
+          <progress value={project.progress} max="100" aria-label="Overall project progress" />
+        </div>
+        <div className="project-sidebar-refresh">
+          <span className="project-sidebar-refresh-label">
+            <RotateCw size={11} className="refresh-icon" aria-hidden="true" />
+            Latest refresh
+          </span>
+          <strong>{project.latestRefresh || "12 Sep 2026, 14:30"}</strong>
+        </div>
+      </div>
     </aside>
     <main className="page detail-page project-section-content" key={`${project.id}-${active}`}>
       {sections[active]}
