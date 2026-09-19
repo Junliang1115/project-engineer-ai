@@ -17,8 +17,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Build tool & bundler caches
+.vite/
+
 # Environment variables & local secrets
 .env
+backend/.env
 .env.development.local
 .env.test.local
 .env.production.local
@@ -42,3 +46,34 @@ lerna-debug.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.env.development
+.env.production
+
+# Google OAuth Secrets
+credentials.json
+token.json
+client_secret*.json
+
+# Microsoft / SharePoint Token Caches
+.sharepoint_token_cache.json
+backend/.sharepoint_token_cache.json
+*.token_cache.json
+
+# Downloaded files
+downloads/
+backend/downloads/
+
