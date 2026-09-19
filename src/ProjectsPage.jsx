@@ -4,28 +4,33 @@ import {
   ArrowLeft,
   ClipboardList as ClipboardText,
 } from "lucide-react";
-import { projects } from "./data.js";
+import { fetchProjects } from "./api.js";
 import { Tag, Button, StatusTag, Progress, resolveProjectId, projectAliases } from "./ProjectTokens.jsx";
 import ProjectSidebar from "./ProjectSidebar.jsx";
-import {
-  AttentionControls,
-  MilestoneControls,
-  CostOutlook,
-  DeliveryControls,
-  RiskControls,
-} from "./ProjectControls.jsx";
+import ProjectOverview, { AttentionControls } from "./ProjectOverview.jsx";
+import ChangeOrderControls from "./ChangeOrderSection.jsx";
+import RiskControls from "./RiskSection.jsx";
 import TechnicalQueriesSection from "./TechnicalQueriesSection.jsx";
-import PhaseRail from "./PhaseRail.jsx";
-import TaskTable, { TaskEvidence, getTaskEvidence } from "./TaskControlsSection.jsx";
+import Rail from "./Rail.jsx";
+
 import WorkforceOverview, { WORKFORCE_PROFILES, getProjectWorkforceTasks } from "./WorkforceSection.jsx";
 import {
   CostChart,
-  PhaseCostAnalysisPage,
+  CostOutlook,
+  CostAnalysisPage,
   getPhaseExpenditures,
   getPhaseCategoryBreakdown,
   CATEGORY_CONFIG,
-} from "./PhaseCostAnalysis.jsx";
+} from "./CostAnalysis.jsx";
 import ProjectsList, { LoadingState } from "./ProjectsList.jsx";
+import MilestoneSection, {
+  MilestoneRail,
+  getProjectMilestones,
+  TaskTable,
+  TaskEvidence,
+  getTaskEvidence,
+} from "./MilestoneSection.jsx";
+
 
 // Re-exports for modular backwards-compatibility
 export {
@@ -33,67 +38,28 @@ export {
   WORKFORCE_PROFILES,
   getProjectWorkforceTasks,
   CostChart,
-  PhaseCostAnalysisPage,
+  CostAnalysisPage,
   getPhaseExpenditures,
   getPhaseCategoryBreakdown,
   CATEGORY_CONFIG,
   TaskTable,
   TaskEvidence,
   getTaskEvidence,
-  PhaseRail,
+  Rail,
   ProjectsList,
   LoadingState,
   resolveProjectId,
   projectAliases,
+  ProjectOverview,
+  ChangeOrderControls,
+  RiskControls,
+  CostOutlook,
+  AttentionControls,
 };
 
-function getProjectActivities(project) {
-  return [
-    {
-      id: `${project.id}-ACT-01`,
-      type: "Change order",
-      source: "Client email",
-      from: "Client commercial team",
-      received: "2026-09-11 10:35",
-      relatedTo: project.tasks[1]?.id || project.tasks[0]?.id,
-      summary: `Requested commercial review for ${project.name} cost and schedule movement.`,
-      action: "Route to cost control and compare against approved budget.",
-    },
-    {
-      id: `${project.id}-ACT-02`,
-      type: "Technical query",
-      source: "Engineer message",
-      from: "Design engineer",
-      received: "2026-09-11 14:10",
-      relatedTo: project.tasks[0]?.id,
-      summary: "Asked whether the latest drawing revision changes the installation sequence.",
-      action: "Attach response to the relevant task before updating progress.",
-    },
-    {
-      id: `${project.id}-ACT-03`,
-      type: "Engineer report",
-      source: "Site report PDF",
-      from: project.owner,
-      received: "2026-09-10 18:20",
-      relatedTo: project.issues[0]?.id,
-      summary: "Daily report includes site photos, manpower count, material status, and open blockers.",
-      action: "Use report evidence to validate status, risk, and progress changes.",
-    },
-    {
-      id: `${project.id}-ACT-04`,
-      type: "Source message",
-      source: "Supplier update",
-      from: "Package supplier",
-      received: "2026-09-09 16:45",
-      relatedTo: project.tasks.at(-1)?.id,
-      summary: "Supplier confirmed latest delivery forecast and pending document requirements.",
-      action: "Update the risk register if the forecast affects the current milestone.",
-    },
-  ];
-}
 
 export function ActivityLog({ project }) {
-  const activities = getProjectActivities(project);
+  const activities = project.activities || [];
 
   return (
     <section className="panel activity-log-panel">
@@ -184,47 +150,14 @@ export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
 
-  const overview = (
-    <>
-      <div className="detail-heading">
-        <div>
-          <div className="title-line">
-            <span>{project.id}</span>
-            <Tag type="warm-gray" size="sm">
-              {project.phase}
-            </Tag>
-          </div>
-          <h1>{project.name}</h1>
-          <p>
-            Current milestone: Work package release · Forecast 23 Sep 2026 · Mock data
-          </p>
-        </div>
-        <div className="detail-progress">
-          <strong>{project.progress}%</strong>
-          <span>Overall progress</span>
-          <Progress value={project.progress} label={false} />
-        </div>
-      </div>
-      <PhaseRail project={project} />
-      <CostChart project={project} onExploreMore={handleExploreMore} />
-      <AttentionControls project={project} />
-      <RiskControls project={project} />
-    </>
-  );
-
   return (
     <ProjectSidebar
       project={project}
       onBack={onBack}
       sections={{
-        overview,
-        milestones: (
-          <>
-            <h1>Milestones</h1>
-            <PhaseRail project={project} />
-            <MilestoneControls project={project} />
-          </>
-        ),
+        overview: <ProjectOverview project={project} onExploreMore={handleExploreMore} />,
+
+        milestones: <MilestoneSection project={project} />,
         workforce: (
           <>
             <h1>Workforce</h1>
@@ -234,26 +167,19 @@ export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
         costs: (
           <>
             <h1>Cost tracking</h1>
-            <CostOutlook project={project} />
-            <PhaseCostAnalysisPage project={project} initialPhase={costPhase} isEmbedded={true} />
+            <CostAnalysisPage project={project} initialPhase={costPhase} isEmbedded={true} />
           </>
         ),
         deliveries: (
           <>
-            <h1>Critical deliveries</h1>
-            <DeliveryControls project={project} />
+            <h1>Change orders</h1>
+            <ChangeOrderControls project={project} />
           </>
         ),
         risks: (
           <>
             <h1>Risks</h1>
             <RiskControls project={project} />
-          </>
-        ),
-        tasks: (
-          <>
-            <h1>Task controls</h1>
-            <TaskTable tasks={project.tasks} />
           </>
         ),
         queries: <TechnicalQueriesSection project={project} />,
@@ -289,6 +215,9 @@ function NotFound({ onBack }) {
 }
 
 export default function ProjectsPage() {
+  const [projects, setProjects] = useState([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [projectLoadError, setProjectLoadError] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
     const match = window.location.pathname.match(/\/projects\/([a-zA-Z0-9_-]+)/);
     return match ? match[1] : null;
@@ -301,6 +230,20 @@ export default function ProjectsPage() {
     }
     return null;
   });
+
+  useEffect(() => {
+    fetchProjects()
+      .then((records) => {
+        setProjects(records);
+        setProjectLoadError("");
+      })
+      .catch((error) => {
+        setProjectLoadError(error.message);
+      })
+      .finally(() => {
+        setIsLoadingProjects(false);
+      });
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -346,13 +289,24 @@ export default function ProjectsPage() {
   };
 
   let content;
-  if (selectedProjectId) {
-    const project = projects.find((p) => p.id === resolveProjectId(selectedProjectId));
+  if (isLoadingProjects) {
+    content = <LoadingState />;
+  } else if (projectLoadError) {
+    content = (
+      <main className="page not-found">
+        <Warning size={32} />
+        <span>API</span>
+        <h1>Project database unavailable</h1>
+        <p>{projectLoadError}</p>
+      </main>
+    );
+  } else if (selectedProjectId) {
+    const project = projects.find((p) => p.id === selectedProjectId || p.id === resolveProjectId(selectedProjectId));
     if (!project) {
       content = <NotFound onBack={handleBackToProjects} />;
     } else if (costAnalysisPhase) {
       content = (
-        <PhaseCostAnalysisPage
+        <CostAnalysisPage
           project={project}
           initialPhase={costAnalysisPhase}
           onBack={handleBackToProjectDetail}
@@ -368,7 +322,7 @@ export default function ProjectsPage() {
       );
     }
   } else {
-    content = <ProjectsList onSelectProject={handleSelectProject} />;
+    content = <ProjectsList projects={projects} onSelectProject={handleSelectProject} />;
   }
 
   return <div className="capital-portfolio-wrapper">{content}</div>;

@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Forward, ArrowLeft, Search as MagnifyingGlass } from "lucide-react";
 import { phases } from "./data.js";
 import { Tag, StatusTag } from "./ProjectTokens.jsx";
+import { getControls, Source } from "./SharedControls.jsx";
+import "./ProjectOverview.css";
+
+const usdMillions = (value) => `$${value.toFixed(1)}M`;
 
 export const CATEGORY_CONFIG = {
   Materials: {
@@ -1132,7 +1136,49 @@ export function PhaseExpenseLedger({ expenditures, selectedPhase, selectedCatego
   );
 }
 
-export function PhaseCostAnalysisPage({ project, initialPhase = "Construction", isEmbedded = false, onBack }) {
+export function CostOutlook({ project }) {
+  const { actual, committed, forecast, pending } = getControls(project);
+  return (
+    <section className="control-section">
+      <div className="section-head">
+        <h2>Cost outlook</h2>
+        <span>Mock forecast · USD</span>
+      </div>
+      <div className="control-costs">
+        {[
+          ["Approved budget", project.budget],
+          ["Actual spent", actual],
+          ["Outstanding commitments", committed],
+          ["Forecast final cost", forecast],
+          ["Forecast overrun", forecast - project.budget],
+          ["Pending changes", pending],
+        ].map(([label, value]) => (
+          <div key={label}>
+            <span>{label}</span>
+            <strong>{usdMillions(value)}</strong>
+          </div>
+        ))}
+      </div>
+      <p className="control-note">
+        Commitments are unpaid orders. Pending changes are excluded from the final-cost forecast.
+      </p>
+      <Source
+        project={project}
+        title="Monthly cost forecast and change register"
+        sender="Cost controller"
+        body={`Actual spend reconciles to the phase ledger. Outstanding orders: ${usdMillions(committed)}. Forecast includes remaining work and ${usdMillions(forecast - project.budget)} overrun; ${usdMillions(pending)} in unapproved changes is tracked separately.`}
+      />
+    </section>
+  );
+}
+
+export function CostAnalysisPage({
+  project,
+  initialPhase = "Construction",
+  isEmbedded = false,
+  showOutlook = isEmbedded,
+  onBack,
+}) {
   const [selectedPhase, setSelectedPhase] = useState(initialPhase);
   const [selectedCategory, setSelectedCategory] = useState("All");
 
@@ -1163,6 +1209,8 @@ export function PhaseCostAnalysisPage({ project, initialPhase = "Construction", 
           <ArrowLeft size={17} /> Back to {project.name}
         </button>
       )}
+
+      {showOutlook && <CostOutlook project={project} />}
 
       <div className="phase-cost-hero">
         <div className="hero-titles">
@@ -1237,4 +1285,4 @@ export function PhaseCostAnalysisPage({ project, initialPhase = "Construction", 
   );
 }
 
-export default PhaseCostAnalysisPage;
+export default CostAnalysisPage;
