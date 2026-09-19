@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Copy,
-  FileText,
   Folder,
   FolderOpen,
   Layers,
@@ -28,16 +27,10 @@ import {
 
 const plusActions = [
   {
-    id: "upload-docs",
-    label: "Upload project documents",
-    icon: FileText,
-    detail: "Specifications, contracts, and QA logs",
-  },
-  {
-    id: "add-design-files",
-    label: "Add design files",
+    id: "upload-project-file",
+    label: "Upload project document",
     icon: Layers,
-    detail: "CAD, BIM, and structural drawings",
+    detail: "Technical Query, Change Order and QA documents",
   },
   {
     id: "run-risk-analysis",
@@ -66,12 +59,11 @@ const plusActions = [
 ];
 
 const projectSnapshot = {
-  confidence: 82,
   agents: [
-    { id: "macro", name: "Reconciliation Agent", confidence: 84 },
-    { id: "technical", name: "Risk Estimation Agent", confidence: 78 },
-    { id: "fundamental", name: "Compliance Agent", confidence: 81 },
-    { id: "arbitration", name: "Orchestration Agent", confidence: 86 },
+    { id: "macro", name: "Reconciliation Agent" },
+    { id: "technical", name: "Risk Estimation Agent" },
+    { id: "fundamental", name: "Compliance Agent" },
+    { id: "arbitration", name: "Orchestration Agent" },
   ],
   messages: [
     {
@@ -85,28 +77,24 @@ const projectSnapshot = {
       role: "agent arbitration",
       name: "Orchestration Agent",
       body: "I coordinated the reconciliation, risk, and compliance checks. The main concern is facade package delay against structural handover, with budget pressure from revised aluminum pricing.",
-      confidence: 86,
     },
     {
       id: 3,
       role: "agent macro",
       name: "Reconciliation Agent",
       body: "Timeline and spend do not fully match. Procurement shows facade material arriving 8 days after the planned installation window, while milestone cost drawdown is already at 64%.",
-      confidence: 84,
     },
     {
       id: 4,
       role: "agent technical",
       name: "Risk Estimation Agent",
       body: "Delay likelihood is medium-high. Key drivers are material delivery, workforce availability for night shift, and international price movement on aluminum and fire-rated assemblies.",
-      confidence: 78,
     },
     {
       id: 5,
       role: "agent fundamental",
       name: "Compliance Agent",
       body: "Compliance Notes: any facade material substitution needs fire certificate validation and safety review before approval. Similar Questions: Project Meridian used resequencing to reduce the same facade delay pattern.",
-      confidence: 81,
     },
   ],
 };
@@ -166,7 +154,7 @@ function ChatPage() {
     return conversationProjects.reduce((acc, p) => ({ ...acc, [p.id]: true }), {});
   });
   const [messagesByTopic, setMessagesByTopic] = useState({
-    [conversationTopics[0].id]: projectSnapshot.messages,
+    "m04-design-risk": projectSnapshot.messages,
     "facade-compliance": [
       {
         id: 1,
@@ -179,7 +167,6 @@ function ChatPage() {
         role: "agent",
         name: "Project Engineer AI",
         body: "Compliance Notes: Fire safety certificate equivalence must be validated before installation. Similar Questions: Project Meridian successfully substituted comparable assemblies following third-party lab review.",
-        confidence: 84,
       },
     ],
     "cost-milestone": [
@@ -194,7 +181,6 @@ function ChatPage() {
         role: "agent",
         name: "Project Engineer AI",
         body: "Cost drawdown is currently at +9.8% with schedule variance of 14 days due to overseas fabrication adjustments.",
-        confidence: 81,
       },
     ],
   });
@@ -353,9 +339,11 @@ function ChatPage() {
 function FullChat({ messages, onUpdateMessages }) {
   const [draft, setDraft] = useState("");
   const [selectedActions, setSelectedActions] = useState([]);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
   const plusMenuRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -382,12 +370,16 @@ function FullChat({ messages, onUpdateMessages }) {
         role: "agent",
         name: "Project Engineer AI",
         body: `Analysis for "${promptText}": Reviewing criteria, project dependencies, risk register, lesson register, and compliance evidence for the active project.`,
-        confidence: projectSnapshot.confidence,
       },
     ]);
   }
 
   function handleSelectAction(action) {
+    if (action.id === "upload-project-file") {
+      fileInputRef.current?.click();
+      setIsPlusMenuOpen(false);
+      return;
+    }
     if (!selectedActions.some((a) => a.id === action.id)) {
       setSelectedActions((prev) => [...prev, action]);
     }
@@ -395,7 +387,24 @@ function FullChat({ messages, onUpdateMessages }) {
     inputRef.current?.focus();
   }
 
+  function handleLocalFileUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const uploadAction = plusActions.find((action) => action.id === "upload-project-file");
+    setUploadedFile(file);
+    setSelectedActions((prev) =>
+      uploadAction && !prev.some((action) => action.id === uploadAction.id)
+        ? [...prev, uploadAction]
+        : prev
+    );
+    inputRef.current?.focus();
+  }
+
   function handleRemoveAction(actionId) {
+    if (actionId === "upload-project-file") {
+      setUploadedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
     setSelectedActions((prev) => prev.filter((a) => a.id !== actionId));
     inputRef.current?.focus();
   }
@@ -406,18 +415,22 @@ function FullChat({ messages, onUpdateMessages }) {
     if (!body && selectedActions.length === 0) return;
 
     const actionLabels = selectedActions.map((a) => a.label);
+    const fileText = uploadedFile ? `Uploaded local file: ${uploadedFile.name}` : "";
+    const bodyText = [fileText, body].filter(Boolean).join("\n");
     let promptText = "";
-    if (actionLabels.length > 0 && body) {
-      promptText = `${actionLabels.map((l) => `[${l}]`).join(" ")} ${body}`;
+    if (actionLabels.length > 0 && bodyText) {
+      promptText = `${actionLabels.map((l) => `[${l}]`).join(" ")} ${bodyText}`;
     } else if (actionLabels.length > 0) {
       promptText = actionLabels.join(", ");
     } else {
-      promptText = body;
+      promptText = bodyText;
     }
 
     addPrompt(promptText);
     setDraft("");
     setSelectedActions([]);
+    setUploadedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function handleKeyDown(event) {
@@ -434,7 +447,6 @@ function FullChat({ messages, onUpdateMessages }) {
         role: "agent",
         name: "Project Engineer AI",
         body: `Regenerated analysis: Rechecking criteria against design timeline, milestone cost, risk exposure, and compliance status.`,
-        confidence: projectSnapshot.confidence,
       },
     ]);
   }
@@ -448,7 +460,7 @@ function FullChat({ messages, onUpdateMessages }) {
               <SquarePen size={28} aria-hidden="true" />
             </div>
             <h2>New Conversation</h2>
-            <p>Ask about design analysis, risk analysis, milestone tracking, or the Knowledge Bank.</p>
+            <p>Ask about risk analysis, milestone tracking, or the Knowledge Bank.</p>
             <div className="chat-starter-prompts">
               <button type="button" className="starter-prompt-btn" onClick={() => addPrompt("Analyze design timeline and workforce skill mix")}>
                 Analyze design timeline and workforce skill mix
@@ -471,6 +483,14 @@ function FullChat({ messages, onUpdateMessages }) {
       <form className="chat-input-container" onSubmit={handleSubmit} noValidate>
         <div className="chat-input-bar">
           <div className="input-action-wrapper" ref={plusMenuRef}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="sr-only"
+              accept=".pdf,.png,.jpg,.jpeg,.dwg,.dxf,.dgn,.ifc,.rvt,.doc,.docx,.xlsx"
+              onChange={handleLocalFileUpload}
+              aria-label="Upload design or project file"
+            />
             <button
               type="button"
               className={`input-action-btn ${isPlusMenuOpen ? "active" : ""}`}
@@ -520,7 +540,7 @@ function FullChat({ messages, onUpdateMessages }) {
               return (
                 <span key={action.id} className="input-action-chip">
                   <ActionIcon size={12} className="action-chip-icon" aria-hidden="true" />
-                  <span className="action-chip-text">{action.label}</span>
+                  <span className="action-chip-text">{action.id === "upload-project-file" && uploadedFile ? uploadedFile.name : action.label}</span>
                   <button
                     type="button"
                     className="action-chip-remove"
@@ -544,7 +564,7 @@ function FullChat({ messages, onUpdateMessages }) {
               placeholder={
                 selectedActions.length > 0
                   ? "Add specific details or press Enter..."
-                  : "Ask project engineering criteria, design analysis, risk analysis, or compliance review"
+                  : "Ask project engineering criteria, risk analysis, or compliance review"
               }
             />
           </div>
@@ -782,15 +802,6 @@ function ChatMessage({ message, onRetry }) {
 
   return (
     <article className="chat-turn agent-turn">
-      <div className="agent-turn-header">
-        <div className="agent-turn-identity">
-          <span className="agent-turn-name">{message.name}</span>
-          {typeof message.confidence === "number" ? (
-            <span className="agent-turn-confidence">{message.confidence}% confidence</span>
-          ) : null}
-        </div>
-      </div>
-
       <div className="agent-turn-content">
         <p>{message.body}</p>
       </div>
