@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { BarChart2, MessageSquare } from "lucide-react";
 import ChatPage from "./ChatPage.jsx";
+import AccountPage from "./AccountPage.jsx";
 import ProjectsPage from "./ProjectsPage.jsx";
+import projectEngineerLogo from "./assets/logo.png";
 
 function getInitialPage() {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/projects")) {
     return "projects";
+  }
+  if (typeof window !== "undefined" && (window.location.pathname.startsWith("/account") || window.location.pathname.startsWith("/plugins"))) {
+    return "account";
   }
 
   return "chat";
@@ -22,14 +27,21 @@ function App() {
 
   const handleSelectPage = (page) => {
     setActivePage(page);
-    window.history.pushState(null, "", page === "projects" ? "/projects" : "/");
+    const path = page === "projects" ? "/projects" : page === "account" || page === "plugins" ? "/account" : "/";
+    window.history.pushState(null, "", path);
   };
 
   return (
     <div className="app-shell">
       <AppNavbar activePage={activePage} onSelectPage={handleSelectPage} />
       <main className="page page-chat">
-        {activePage === "projects" ? <ProjectsPage /> : <ChatPage />}
+        {activePage === "projects" ? (
+          <ProjectsPage />
+        ) : activePage === "account" || activePage === "plugins" ? (
+          <AccountPage />
+        ) : (
+          <ChatPage />
+        )}
       </main>
     </div>
   );
@@ -39,7 +51,7 @@ function AppNavbar({ activePage, onSelectPage }) {
   return (
     <header className="app-navbar" aria-label="Primary navigation">
       <div className="app-brand" aria-label="Project Engineer home">
-        <span className="app-brand-mark" aria-hidden="true">PE</span>
+        <img className="app-brand-mark" src={projectEngineerLogo} alt="" aria-hidden="true" />
         <span className="app-brand-name">Project Engineer</span>
       </div>
 
@@ -62,7 +74,12 @@ function AppNavbar({ activePage, onSelectPage }) {
         </button>
       </nav>
 
-      <button type="button" className="account-button" aria-label="Account">
+      <button
+        type="button"
+        className={`account-button ${activePage === "account" || activePage === "plugins" ? "active" : ""}`}
+        onClick={() => onSelectPage("account")}
+        aria-label="Account"
+      >
         <span className="account-avatar" aria-hidden="true">JL</span>
         <span>Account</span>
       </button>
