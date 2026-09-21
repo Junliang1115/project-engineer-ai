@@ -4,7 +4,7 @@
 
 **Goal:** Scan Gmail on a schedule, let DeepSeek classify each email and propose a database destination, reconcile it with current project records, and apply safe updates through the database MCP server.
 
-**Architecture:** A Python command uses the existing Gmail reader, LangChain `ChatDeepSeek`, and an MCP client for database reads and writes. A deterministic reconciler limits which suggested actions can become writes. A ledger makes each Gmail message idempotent; one database MCP tool applies the approved actions for each message transactionally.
+**Architecture:** A Python command uses the existing Gmail reader, LangChain `ChatDeepSeek`, and an MCP client for database reads and writes. A deterministic reconciler limits which suggested actions can become writes. An `activity_log` row keyed by Gmail message ID makes processing idempotent; one database MCP tool applies the approved actions for each message transactionally.
 
 **Tech Stack:** Python, `langchain-deepseek`, Pydantic, Gmail API, MCP Python SDK, psycopg, PostgreSQL, cron.
 
@@ -18,6 +18,7 @@
 - Change orders and ambiguous matches go to review.
 - Task status auto-transitions are only `not_started` → `in_progress` and `in_progress` → `complete`.
 - One Gmail message ID is processed once; all actions for that message commit atomically.
+- Reuse `activity_log` for scanner state; do not create an email-processing table.
 - Default cron interval: 15 minutes. Numeric progress is not updated in this version.
 
 ## Review Focus
@@ -30,16 +31,16 @@
 
 ---
 
-### Task 1: Database ledger and MCP operations
+### Task 1: Activity-log processing state and MCP operations
 
-**Files:** Modify `backend/db/schema.sql`, `backend/mcp_db_server.py`; create `tests/gmail_reconciliation_db_test.py`.
+**Files:** Modify `backend/db/schema.sql`, `backend/mcp_db_server.py`; create `backend/db/migrations/2026-09-21-gmail-activity-log.sql`, `tests/gmail_reconciliation_db_test.py`.
 
 **Interfaces:** Produce MCP tools `lookup_email_context(project_id: str, task_id: str = "", request_id: str = "") -> str`, `get_email_processing(message_id: str) -> str`, and `apply_email_decision(payload_json: str) -> str`. The JSON result has `state`, `project`, `task`, `request`, and `last_applied_source_date` as applicable. The payload contains message ID, project ID, extracted summary, categories, proposed actions, source date, and evidence.
 
-- [ ] **Step 1: Write failing tests.** Use a fake `psycopg` connection and assert duplicate message IDs return `already_processed`, an update with a mismatched project ID is rejected, and transaction failure rolls back both action and ledger completion. Include a schema smoke assertion for the ledger's primary key.
+- [ ] **Step 1: Write failing tests.** Use a fake `psycopg` connection and assert duplicate message IDs return `already_processed`, an update with a mismatched project ID is rejected, an unmatched email can be logged with no project, and transaction failure rolls back both action and activity-log completion. Include a schema smoke assertion for the Gmail source unique index.
 - [ ] **Step 2: Run `python -m unittest tests.gmail_reconciliation_db_test -v`; confirm failure.**
-- [ ] **Step 3: Add `email_processing` with `message_id text primary key`, `project_id`, `categories jsonb`, `extracted jsonb`, `decision jsonb`, `state`, `error`, `created_at`, and `updated_at`.** Add an index on `(project_id, updated_at)`.
-- [ ] **Step 4: Implement the three MCP tools.** Use parameterized queries. `lookup_email_context` reads only the named project and exact task/request IDs. `apply_email_decision` locks the ledger row, rechecks target project, transition, and last source date, applies allowed fixed SQL statements, and completes the ledger within one transaction. Persist `needs_review` decisions without project-data mutation. Reject an unknown action or destination.
+- [ ] **Step 3: Extend `activity_log` with nullable `project_id`, `processing_state text`, and `processing_details jsonb`.** Add a partial unique index on `(source_type, source_path)` where `source_type='gmail_scanner'`. Put idempotent `ALTER TABLE` and `CREATE INDEX IF NOT EXISTS` statements in the migration for existing databases, and mirror the final shape in `schema.sql` for fresh installs. Keep the new columns null for ordinary activity rows.
+- [ ] **Step 4: Implement the three MCP tools.** Use parameterized queries. `lookup_email_context` reads only the named project and exact task/request IDs. `get_email_processing` finds a scanner row by `source_path`. `apply_email_decision` locks that row, rechecks target project, transition, and last source date, applies allowed fixed SQL statements, and completes the scanner row within one transaction. The scanner row itself serves as the daily activity log. Persist `needs_review` decisions without project-data mutation. Reject an unknown action or destination.
 - [ ] **Step 5: Run the focused test and existing `tests/db-schema-smoke.test.mjs`; commit only these files.**
 
 ### Task 2: DeepSeek extraction and deterministic reconciliation
@@ -62,7 +63,7 @@
 
 - [ ] **Step 1: Write failing tests** with fake Gmail/model/MCP clients for duplicate skip, failure isolation, dry-run zero writes, and retry after a failed write.
 - [ ] **Step 2: Run `python -m unittest tests.scan_gmail_test -v`; confirm failure.**
-- [ ] **Step 3: Implement the runner.** Fetch bounded Gmail IDs, check the ledger, read full message, classify, look up DB context, decide, then call `apply_email_decision` unless dry-run. Print a count summary without bodies, tokens, or keys. Exit nonzero if any message failed.
+- [ ] **Step 3: Implement the runner.** Fetch bounded Gmail IDs, check for the scanner's activity-log row, read full message, classify, look up DB context, decide, then call `apply_email_decision` unless dry-run. Print a count summary without bodies, tokens, or keys. Exit nonzero if any message failed.
 - [ ] **Step 4: Document environment variables, OAuth setup, one-time dry run, MCP subprocess use, and `*/15 * * * * cd /path/to/project && /path/to/python -m backend.scan_gmail --query 'label:INBOX newer_than:7d' --limit 25` as the 15-minute cron entry.** Add a process lock for overlapping runs and explain retry and review states. Do not install the cron entry until Gmail OAuth and the DeepSeek key are configured.
 - [ ] **Step 5: Run focused tests, all backend unittest tests, and a dry run with mocked clients; commit only these files.**
 
