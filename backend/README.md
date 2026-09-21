@@ -91,3 +91,36 @@ Available tools:
 - `read_sharepoint_file`
 - `download_sharepoint_file`
 - `read_excel_range`
+
+## AWS Linux Gmail scanner schedule
+
+The scheduled Gmail reconciliation scanner is planned in
+`docs/superpowers/plans/2026-09-21-gmail-reconciliation-agent.md`. The cron
+installer checks that `backend/scan_gmail.py` exists, so it cannot enable the
+job before the scanner is implemented.
+
+Once the scanner is available, set up a host Python virtual environment and a
+private environment file for the Linux user that owns the cron job:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+mkdir -p "$HOME/.config/project-engineer"
+chmod 700 "$HOME/.config/project-engineer"
+cat > "$HOME/.config/project-engineer/gmail-scanner.env" <<'EOF'
+DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/project_engineer'
+DEEPSEEK_API_KEY='YOUR_KEY'
+GMAIL_CREDENTIALS_PATH='/absolute/path/to/credentials.json'
+GMAIL_TOKEN_PATH='/absolute/path/to/token.json'
+GMAIL_SCAN_QUERY='label:INBOX newer_than:7d'
+GMAIL_SCAN_LIMIT=25
+EOF
+chmod 600 "$HOME/.config/project-engineer/gmail-scanner.env"
+```
+
+Complete Gmail OAuth interactively once under the same Linux user to create
+`token.json`. Then run `bash deploy/run-gmail-scanner.sh` manually and inspect
+its result before installing the schedule with `bash deploy/install-gmail-cron.sh`.
+The installer adds one cron entry every 15 minutes and uses `flock` to prevent
+overlapping runs. Logs go to `~/.local/state/project-engineer/gmail-scanner.log`.
+Check it with `crontab -l` and `tail -f ~/.local/state/project-engineer/gmail-scanner.log`.
