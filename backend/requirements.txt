@@ -8,3 +8,4 @@ httpx
 mcp>=2,<3
 msal>=1.31,<2
 openpyxl>=3.1,<4
+langchain-deepseek>=1,<2
