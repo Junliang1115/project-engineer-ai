@@ -30,6 +30,9 @@ assert.doesNotMatch(schema, /\bcreate table if not exists documents\b/i);
 
 assert.doesNotMatch(schema, /agent_runs/i);
 assert.doesNotMatch(schema, /agent_findings/i);
+assert.match(schema, /processing_state text/i);
+assert.match(schema, /processing_details jsonb/i);
+assert.match(schema, /unique index if not exists uq_activity_log_gmail_(scanner_)?source\s+on activity_log \(source_type, source_path\)\s+where source_type = 'gmail_scanner'/i);
 assert.match(seed, /Harbor Link Station/i);
 assert.match(seed, /Pipe wall thickness below project class requirement/i);
 assert.doesNotMatch(seed, /\bprobability\b/i);

@@ -130,13 +130,13 @@ assert.match(projectOverview, /Needs attention/i);
 assert.doesNotMatch(projectOverview, /MilestoneControls/i);
 
 // ---------------------------------------------------------------------------
-// 6. Milestone Progression & Task Evidence
+// 6. Milestone Progression & Task Log
 // ---------------------------------------------------------------------------
 assert.match(rail, /Phase progression/i);
 assert.match(milestoneSection, /Milestone progression/i);
 assert.match(milestoneSection, /MilestoneRail/i);
 assert.match(milestoneSection, /MilestoneGroupCard/i);
-assert.match(milestoneSection, /TaskEvidence/i);
+assert.match(milestoneSection, /TaskLog/i);
 assert.match(milestoneSection, /Source evidence/i);
 assert.match(milestoneSection, /Validation note/i);
 assert.match(milestoneSection, /Expand source/i);
