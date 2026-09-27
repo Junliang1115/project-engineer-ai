@@ -41,10 +41,7 @@ class SharePointConfig:
     def from_env(cls) -> "SharePointConfig":
         client_id = os.getenv("SHAREPOINT_CLIENT_ID", "").strip()
         tenant_id = os.getenv("SHAREPOINT_TENANT_ID", "").strip()
-        site_url = os.getenv(
-            "SHAREPOINT_SITE_URL",
-            "https://contoso.sharepoint.com/sites/Engineering",
-        ).strip()
+        site_url = os.getenv("SHAREPOINT_SITE_URL","").strip()
         missing = [
             name
             for name, value in (

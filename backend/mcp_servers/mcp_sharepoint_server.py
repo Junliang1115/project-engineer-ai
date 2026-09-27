@@ -1,11 +1,19 @@
 """Read-only SharePoint MCP server for the Project Engineer Platform."""
 
 import json
+import os
+import sys
+from pathlib import Path
+
+# Add backend directory to sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from mcp.server import MCPServer
 
 try:
-    from .sharepoint_service import SharePointError, SharePointService
+    from backend.sharepoint_service import SharePointError, SharePointService
 except ImportError:
     from sharepoint_service import SharePointError, SharePointService
 
