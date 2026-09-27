@@ -5176,6 +5176,25 @@ meter {
   font: 12px / 1.7 "IBM Plex Mono", monospace;
 }
 
+.capital-portfolio-wrapper .refresh-scan-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
+@keyframes spin-refresh {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin-icon {
+  animation: spin-refresh 1s linear infinite;
+}
+
 .capital-portfolio-wrapper .metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -5931,18 +5950,51 @@ meter {
 .capital-portfolio-wrapper .task-source-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 8px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
   padding: 0;
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.capital-portfolio-wrapper .task-row:hover .task-source-toggle {
+  color: #f3f4f4;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.capital-portfolio-wrapper .task-source-toggle:hover {
+  background: rgba(231, 166, 59, 0.18) !important;
+  color: var(--accent) !important;
+  border-color: rgba(231, 166, 59, 0.3) !important;
+}
+
+.capital-portfolio-wrapper .task-source-toggle[aria-expanded="true"] {
   color: var(--accent);
-  font-size: 11px;
-  font-weight: 600;
+  background: rgba(231, 166, 59, 0.14);
+  border-color: rgba(231, 166, 59, 0.25);
 }
 
 .capital-portfolio-wrapper .task-source-toggle[aria-expanded="true"] svg {
   transform: rotate(180deg);
+}
+
+.capital-portfolio-wrapper .task-row {
+  transition: background-color 0.15s ease;
+}
+
+.capital-portfolio-wrapper .task-row:hover {
+  background-color: rgba(255, 255, 255, 0.025);
+}
+
+.capital-portfolio-wrapper .task-row.is-expanded {
+  background-color: rgba(231, 166, 59, 0.035);
 }
 
 .capital-portfolio-wrapper .task-source-row:hover {

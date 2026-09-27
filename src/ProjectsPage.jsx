@@ -4,7 +4,7 @@ import {
   ArrowLeft,
   ClipboardList as ClipboardText,
 } from "lucide-react";
-import { fetchProjects } from "./api.js";
+import { fetchProjects, fetchProjectsMeta, triggerScanUpdates } from "./api.js";
 import { Tag, Button, StatusTag, Progress, resolveProjectId, projectAliases } from "./ProjectTokens.jsx";
 import ProjectSidebar from "./ProjectSidebar.jsx";
 import ProjectOverview, { AttentionControls } from "./ProjectOverview.jsx";
@@ -24,11 +24,9 @@ import {
 } from "./CostAnalysis.jsx";
 import ProjectsList, { LoadingState } from "./ProjectsList.jsx";
 import MilestoneSection, {
-  MilestoneRail,
-  getProjectMilestones,
   TaskTable,
-  TaskEvidence,
-  getTaskEvidence,
+  TaskLog,
+  getTaskLog,
 } from "./MilestoneSection.jsx";
 
 
@@ -43,8 +41,8 @@ export {
   getPhaseCategoryBreakdown,
   CATEGORY_CONFIG,
   TaskTable,
-  TaskEvidence,
-  getTaskEvidence,
+  TaskLog,
+  getTaskLog,
   Rail,
   ProjectsList,
   LoadingState,
@@ -216,6 +214,8 @@ function NotFound({ onBack }) {
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [projectLoadError, setProjectLoadError] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
@@ -231,19 +231,44 @@ export default function ProjectsPage() {
     return null;
   });
 
+  const loadData = async () => {
+    try {
+      const [records, meta] = await Promise.all([
+        fetchProjects(),
+        fetchProjectsMeta(),
+      ]);
+      setProjects(records);
+      if (meta && meta.last_updated) {
+        setLastUpdated(meta.last_updated);
+      }
+      setProjectLoadError("");
+    } catch (error) {
+      setProjectLoadError(error.message);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  };
+
   useEffect(() => {
-    fetchProjects()
-      .then((records) => {
-        setProjects(records);
-        setProjectLoadError("");
-      })
-      .catch((error) => {
-        setProjectLoadError(error.message);
-      })
-      .finally(() => {
-        setIsLoadingProjects(false);
-      });
+    loadData();
   }, []);
+
+  const handleRefresh = async () => {
+    setIsScanning(true);
+    try {
+      const scanResponse = awaittriggerScanUpdates();
+      if (scanResponse && scanResponse.last_updated) {
+        setLastUpdated(scanResponse.last_updated);
+      }
+      // Re-fetch project records to show new tasks/requests/remarks
+      const records = await fetchProjects();
+      setProjects(records);
+    } catch (err) {
+      console.error("Scan error:", err);
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   useEffect(() => {
     const handlePopState = () => {
@@ -322,7 +347,15 @@ export default function ProjectsPage() {
       );
     }
   } else {
-    content = <ProjectsList projects={projects} onSelectProject={handleSelectProject} />;
+    content = (
+      <ProjectsList
+        projects={projects}
+        onSelectProject={handleSelectProject}
+        onRefreshProjects={handleRefresh}
+        lastUpdated={lastUpdated}
+        isScanning={isScanning}
+      />
+    );
   }
 
   return <div className="capital-portfolio-wrapper">{content}</div>;

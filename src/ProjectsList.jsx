@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Building2 as Buildings,
   Layers,
+  RotateCw,
   Search as MagnifyingGlass,
 } from "lucide-react";
 import { Tag, Button, Progress } from "./ProjectTokens.jsx";
@@ -43,7 +44,7 @@ function isProjectActive(project) {
   return !isFinished && !isClosed;
 }
 
-export function ProjectsList({ projects, onSelectProject }) {
+export function ProjectsList({ projects, onSelectProject, onRefreshProjects, lastUpdated, isScanning }) {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all"); // 'all' | 'active' | 'high-risk'
@@ -54,6 +55,23 @@ export function ProjectsList({ projects, onSelectProject }) {
   }, []);
 
   if (loading) return <LoadingState />;
+
+  const formatLastUpdated = (dateStr) => {
+    if (!dateStr) return "Recently";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const activeProjectsCount = projects.filter(isProjectActive).length;
   const openHighRiskCount = projects.reduce(
@@ -79,8 +97,35 @@ export function ProjectsList({ projects, onSelectProject }) {
           <h1>Capital projects</h1>
           <p>Monitor phase position, delivery progress, cost exposure, and active project controls.</p>
         </div>
-        <div className="heading-meta">
-          Updated 01 Sep 2026<br />Reporting cycle 09
+        <div className="heading-meta" style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span>Updated {formatLastUpdated(lastUpdated)}</span>
+          {onRefreshProjects && (
+            <button
+              type="button"
+              className="refresh-scan-button"
+              onClick={onRefreshProjects}
+              disabled={isScanning}
+              title="Scan Gmail and refresh project data"
+              aria-label="Scan Gmail and refresh project data"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.35rem",
+                padding: "0.35rem 0.65rem",
+                fontSize: "0.78rem",
+                fontWeight: "600",
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                borderRadius: "6px",
+                color: "#f0f0f0",
+                cursor: isScanning ? "not-allowed" : "pointer",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <RotateCw size={14} className={isScanning ? "spin-icon" : ""} />
+              <span>{isScanning ? "Scanning..." : "Refresh"}</span>
+            </button>
+          )}
         </div>
       </div>
 

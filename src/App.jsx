@@ -52,7 +52,7 @@ function AppNavbar({ activePage, onSelectPage }) {
     <header className="app-navbar" aria-label="Primary navigation">
       <div className="app-brand" aria-label="Project Engineer home">
         <img className="app-brand-mark" src={projectEngineerLogo} alt="" aria-hidden="true" />
-        <span className="app-brand-name">Project Engineer</span>
+        <span className="app-brand-name">OIL AGENT</span>
       </div>
 
       <nav className="app-nav-links" aria-label="Page navigation">
