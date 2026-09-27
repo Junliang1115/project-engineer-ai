@@ -1,168 +1,162 @@
 import React, { useState } from "react";
 import {
-  CalendarDays,
-  CheckCircle2,
   AlertTriangle,
   ChevronDown,
   ChevronUp,
   Clock,
-  Layers,
-  Search,
-  Filter,
-  ArrowRight,
-  ShieldAlert,
-  FileText,
-  Building2,
-  Check,
   AlertCircle,
   Mail,
 } from "lucide-react";
-import { Tag, Button, StatusTag, Progress, money } from "./ProjectTokens.jsx";
+import { Tag, Button, StatusTag, money } from "./ProjectTokens.jsx";
 import Rail, { MilestoneRail } from "./Rail.jsx";
 export { MilestoneRail, Rail };
 
+// Milestone data fetching
 export function getProjectMilestones(project) {
-  // 1. If the database returns milestones, use the database records directly:
-  if (project?.milestones && project.milestones.length > 0) {
-    return project.milestones.map((m) => {
-      const isComplete = m.status === "Complete";
-      const isBlocked = m.status === "Blocked";
-
-      return {
-        id: m.id,
-        name: m.name,
-        phase: m.phase || project.phase,
-        status: m.status,
-        progress: m.progress != null ? m.progress : isComplete ? 100 : 0,
-        forecastDate: m.forecastDate || m.due_date || "",
-        plannedAmount: m.plannedAmount || 0,
-        actualAmount: m.actualAmount || 0,
-        owner: m.owner || m.tasks?.[0]?.owner || "Project lead",
-        variance: m.variance || (isComplete ? "0 days" : isBlocked ? "+7 days" : "+3 days"),
-        description: m.description || `Stage gate milestone delivery package for ${m.name}.`,
-        blocker: m.blocker || (isBlocked ? "Material compliance / drawing inspection hold pending resolution" : null),
-        tasks: m.tasks || [],
-      };
-    });
-
-
+  if (!project?.milestones || project.milestones.length === 0) {
+    return [];
   }
 
-  // 2. Fallback if project.milestones is not yet loaded:
-  const phase = project?.phase || "Construction";
-  const tasks = (project?.tasks || []).filter(
-    (t) => (t.phase || phase).toLowerCase() === phase.toLowerCase()
-  );
-
-  return [
-    {
-      id: "M-01",
-      name: "Substructure & Foundation Release",
-      description: "Civil groundworks and foundation inspection sign-off.",
-      status: "Complete",
-      progress: 100,
-      forecastDate: "2026-08-14",
-      variance: "0 days",
-      owner: "Civil delivery team",
-      tasks: tasks.filter((t) => t.id === "TSK-101" || t.title.toLowerCase().includes("concrete")),
-    },
-    {
-      id: "M-02",
-      name: "Envelope & MEP Rough-in Release",
-      description: "Curtain wall sequencing and MEP riser penetrations sign-off.",
-      status: "In progress",
-      progress: 75,
-      forecastDate: "2026-09-18",
-      variance: "+3 days",
-      owner: "Envelope package team",
-      blocker: "Approved drawing revision outstanding for exterior facade clips",
-      tasks: tasks.filter((t) => t.id === "TSK-102" || t.title.toLowerCase().includes("curtain wall")),
-    },
-    {
-      id: "M-04",
-      name: "Work package release",
-      description: "Primary HVAC chiller skids, CW-014 piping runs, and pump tie-in.",
-      status: "In progress",
-      progress: 58,
-      forecastDate: "2026-09-30",
-      variance: "+5 days",
-      owner: "Mechanical lead",
-      blocker: "Pipe wall thickness technical query and vendor inspection release",
-      tasks: tasks.filter((t) => t.id === "TSK-103" || t.title.toLowerCase().includes("chiller") || t.title.toLowerCase().includes("pump")),
-    },
-    {
-      id: "M-05",
-      name: "Life Safety & Commissioning Readiness",
-      description: "Fire suppression system testing and architectural finishes.",
-      status: "Blocked",
-      progress: 20,
-      forecastDate: "2026-10-22",
-      variance: "+7 days",
-      owner: "Compliance lead",
-      blocker: "Missing overseas fire-rated certificate on imported glazing supplier",
-      tasks: tasks.filter((t) => t.id === "TSK-104" || t.id === "TSK-105" || t.title.toLowerCase().includes("fire")),
-    },
-  ];
+  return project.milestones.map((m) => ({
+    id: m.id,
+    name: m.name,
+    phase: m.phase || project.phase,
+    status: m.status,
+    progress: m.progress ?? 0,
+    forecastDate: m.forecastDate || m.due_date || "",
+    plannedAmount: m.plannedAmount || 0,
+    actualAmount: m.actualAmount || 0,
+    variance: m.variance || "",
+    description: m.description || "",
+    blocker: m.blocker || null,
+    tasks: m.tasks || [],
+  }));
 }
 
-export function getTaskEvidence(task) {
-  const sourceType =
-    task.status === "Complete" ? "Inspection record" : task.status === "Blocked" ? "Email" : "Site message";
-  const sourceOwner =
-    task.status === "Blocked" ? "Compliance inbox" : task.status === "Complete" ? task.owner : "Project controls";
-  const sourceDate = task.status === "Complete" ? "2026-09-01 09:20" : "2026-09-11 16:45";
-  const confidence =
-    task.status === "Complete" ? "Validated" : task.status === "Blocked" ? "Needs review" : "Progress update";
+// Task Activity Log fetching
+export function getTaskLog(task) {
+  if (!task) return [];
 
-  return {
-    sourceType,
-    sourceOwner,
-    sourceDate,
-    confidence,
-    subject: `${task.id} / ${task.title}`,
-    validationNote:
-      task.status === "Complete"
-        ? "Completion is validated from signed inspection evidence and cost actuals can be reconciled."
-        : task.status === "Blocked"
-          ? "Status remains blocked until the referenced message/document resolves the compliance hold."
-          : "Progress should be updated from the latest site message, then checked against cost and schedule variance.",
-  };
+  // Collect real activities attached to this task via the foreign key (task_id):
+  const taskActivities = Array.isArray(task.activities) ? [...task.activities] : [];
+
+  // Sort latest first (most recent timestamp at top):
+  taskActivities.sort((a, b) => {
+    const parseTime = (val) => (val ? Date.parse(val.replace(" ", "T")) : 0);
+    return parseTime(b.received) - parseTime(a.received);
+  });
+
+  return taskActivities.map((act) => {
+    const rawSource = act.sourceType || act.source || act.source_type || "email";
+    const formattedSource = rawSource
+      ? rawSource.charAt(0).toUpperCase() + rawSource.slice(1)
+      : "";
+
+    return {
+      id: act.id,
+      title: act.title,
+      sourceType: formattedSource,
+      sourceOwner: act.from || act.sourceOwner || "",
+      sourceDate: act.received || act.sourceDate || "",
+      confidence: act.state === "applied" ? "Applied" : act.state === "needs_review" ? "Needs Review" : "Logged",
+      summary: act.summary,
+    };
+  });
 }
 
-export function TaskEvidence({ evidence }) {
+// Task Activity Log Panel
+export function TaskLog({ logs, evidence, task }) {
+  const activities = Array.isArray(logs) ? logs : Array.isArray(evidence) ? evidence : [];
+
   return (
     <tr className="task-source-row">
-      <td colSpan="8">
+      <td colSpan="9">
         <div className="task-source-panel">
           <div className="task-source-heading">
             <Mail size={17} aria-hidden="true" />
             <div>
-              <strong>Source evidence</strong>
-              <span>{evidence.subject}</span>
+              <strong>Task log</strong>
+              <span style={{ marginLeft: "8px", fontSize: "11px", color: "rgba(255, 255, 255, 0.45)" }}>
+                Source evidence
+              </span>
             </div>
           </div>
-          <div className="source-evidence-grid">
-            <div>
-              <span>Source type</span>
-              <strong>{evidence.sourceType}</strong>
+
+          {task?.remark && (
+            <p style={{ paddingBottom: "10px", borderBottom: "1px dashed rgba(255,255,255,0.1)" }}>
+              <span>Task remark</span>
+              {task.remark}
+            </p>
+          )}
+
+          {activities.length > 0 ? (
+            <div className="task-activities-stream" style={{ display: "grid", gap: "12px" }}>
+              {activities.map((act, index) => (
+                <div
+                  key={act.id || index}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    background: index === 0 ? "rgba(231, 166, 59, 0.06)" : "#151917",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: "600", color: "#f3f4f4" }}>
+                      #{index + 1} {act.title}
+                    </span>
+                    {index === 0 && (
+                      <span
+                        style={{
+                          fontSize: "10px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          background: "rgba(231, 166, 59, 0.2)",
+                          color: "var(--accent, #e7a63b)",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Latest
+                      </span>
+                    )}
+                  </div>
+                  <div className="source-evidence-grid">
+                    <div>
+                      <span>Source type</span>
+                      <strong>{act.sourceType}</strong>
+                    </div>
+                    <div>
+                      <span>Owner / sender</span>
+                      <strong>{act.sourceOwner}</strong>
+                    </div>
+                    <div>
+                      <span>Received</span>
+                      <strong>{act.sourceDate}</strong>
+                    </div>
+                    <div>
+                      <span>Status signal</span>
+                      <strong>{act.confidence}</strong>
+                    </div>
+                  </div>
+                  {act.summary && (
+                    <p style={{ marginTop: "8px" }}>
+                      <span>Summary</span>
+                      {act.summary}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
+          ) : (
             <div>
-              <span>Owner / sender</span>
-              <strong>{evidence.sourceOwner}</strong>
+              <p style={{ marginTop: "8px" }}>
+                <span>Validation note</span>
+                " "
+              </p>
             </div>
-            <div>
-              <span>Received</span>
-              <strong>{evidence.sourceDate}</strong>
-            </div>
-            <div>
-              <span>Status signal</span>
-              <strong>{evidence.confidence}</strong>
-            </div>
-          </div>
-          <p>
-            <span>Validation note</span>
-            {evidence.validationNote}
-          </p>
+          )}
         </div>
       </td>
     </tr>
@@ -181,8 +175,9 @@ export function MilestoneGroupCard({
   isExpanded,
   onToggleExpand,
   expandedTaskId,
-  onToggleTaskEvidence,
+  onToggleTaskLog,
 }) {
+  const handleToggleTaskLog = onToggleTaskLog;
   const isComplete = milestone.status === "Complete";
   const isBlocked = milestone.status === "Blocked";
 
@@ -204,7 +199,7 @@ export function MilestoneGroupCard({
             )}
           </div>
           <h3>{milestone.name}</h3>
-          <p className="milestone-desc">{milestone.description}</p>
+          {milestone.description && <p className="milestone-desc">{milestone.description}</p>}
           {milestone.blocker && (
             <div className="milestone-blocker-alert">
               <AlertTriangle size={14} aria-hidden="true" />
@@ -259,33 +254,26 @@ export function MilestoneGroupCard({
                   <th className="num">Estimate</th>
                   <th className="num">Actual</th>
                   <th className="num">Variance</th>
+                  <th style={{ width: "36px" }}></th>
                 </tr>
               </thead>
               <tbody>
                 {milestone.tasks.map((task) => {
                   const variance = task.cost_estimate - task.cost_actual;
-                  const evidence = getTaskEvidence(task);
+                  const taskLogs = getTaskLog(task);
                   const isTaskExpanded = expandedTaskId === task.id;
 
                   return (
                     <React.Fragment key={task.id}>
-                      <tr>
+                      <tr
+                        className={`task-row ${isTaskExpanded ? "is-expanded" : ""}`}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleToggleTaskLog(task.id)}
+                      >
                         <td>
                           <strong>{task.title}</strong>
                           <div className="task-subrow">
                             <small className="task-id-badge">{task.id}</small>
-                            <button
-                              type="button"
-                              className="task-source-toggle"
-                              aria-expanded={isTaskExpanded}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleTaskEvidence(task.id);
-                              }}
-                            >
-                              <ChevronDown size={13} aria-hidden="true" />
-                              Expand source
-                            </button>
                           </div>
                         </td>
                         <td>
@@ -301,8 +289,23 @@ export function MilestoneGroupCard({
                         <td className={`num ${variance < 0 ? "overrun" : "underrun"}`}>
                           {money(variance)}
                         </td>
+                        <td className="task-action-cell" style={{ textAlign: "right", verticalAlign: "middle" }}>
+                          <button
+                            type="button"
+                            className="task-source-toggle"
+                            aria-label={isTaskExpanded ? "Collapse source" : "Expand source"}
+                            title={isTaskExpanded ? "Collapse source log" : "Expand source log"}
+                            aria-expanded={isTaskExpanded}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleTaskLog(task.id);
+                            }}
+                          >
+                            <ChevronDown size={15} aria-hidden="true" />
+                          </button>
+                        </td>
                       </tr>
-                      {isTaskExpanded && <TaskEvidence evidence={evidence} />}
+                      {isTaskExpanded && <TaskLog logs={taskLogs} evidence={taskLogs} task={task} />}
                     </React.Fragment>
                   );
                 })}
@@ -336,7 +339,7 @@ export default function MilestoneSection({ project, initialView = "all" }) {
     }));
   };
 
-  const toggleTaskEvidence = (taskId) => {
+  const toggleTaskLog = (taskId) => {
     setExpandedTaskId((prev) => (prev === taskId ? null : taskId));
   };
 
@@ -422,7 +425,8 @@ export default function MilestoneSection({ project, initialView = "all" }) {
               isExpanded={!!expandedGroups[milestone.id]}
               onToggleExpand={() => toggleGroup(milestone.id)}
               expandedTaskId={expandedTaskId}
-              onToggleTaskEvidence={toggleTaskEvidence}
+              onToggleTaskLog={toggleTaskLog}
+              project={project}
             />
           ))
         ) : (
