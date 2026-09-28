@@ -60,21 +60,27 @@ create table if not exists project_task (
   duration_days integer,
   cost_estimate numeric(14,2) not null default 0,
   cost_actual numeric(14,2) not null default 0,
+  remark text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create table if not exists activity_log (
   activity_id uuid primary key default gen_random_uuid(),
-  project_id text not null references project(id) on delete cascade,
+  project_id text references project(id) on delete cascade,
   task_id text references project_task(task_id) on delete set null,
   activity_type text not null,
   title text not null,
   source_type text not null default 'system',
   source_path text,
   summary text,
+  processing_state text,
+  processing_details jsonb,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists uq_activity_log_source
+  on activity_log (source_type, source_path);
 
 create table if not exists risk_register (
   risk_id uuid primary key default gen_random_uuid(),
