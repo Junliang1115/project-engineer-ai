@@ -18,7 +18,7 @@ export async function fetchProjectsMeta() {
   return response.json();
 }
 
-export async functiontriggerScanUpdates(options = {}) {
+export async function triggerScanUpdates(options = {}) {
   const queryParams = new URLSearchParams();
   if (options.query) queryParams.set("query", options.query);
   if (options.limit) queryParams.set("limit", options.limit);

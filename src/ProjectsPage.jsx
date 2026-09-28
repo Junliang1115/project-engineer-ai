@@ -256,7 +256,7 @@ export default function ProjectsPage() {
   const handleRefresh = async () => {
     setIsScanning(true);
     try {
-      const scanResponse = awaittriggerScanUpdates();
+      const scanResponse = await triggerScanUpdates();
       if (scanResponse && scanResponse.last_updated) {
         setLastUpdated(scanResponse.last_updated);
       }

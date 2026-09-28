@@ -10,6 +10,7 @@ const readSrc = (filename) =>
 const app = readSrc("App.jsx");
 const chatPage = readSrc("ChatPage.jsx");
 const projectsPage = readSrc("ProjectsPage.jsx");
+const api = readSrc("api.js");
 const projectsList = readSrc("ProjectsList.jsx");
 const projectOverview = readSrc("ProjectOverview.jsx");
 const projectSidebar = readSrc("ProjectSidebar.jsx");
@@ -115,6 +116,8 @@ assert.match(projectsPage, /CostAnalysisPage/);
 assert.match(projectsPage, /MilestoneSection/);
 assert.match(projectsPage, /Rail/);
 assert.match(projectsPage, /fetchProjects/);
+assert.match(api, /export async function triggerScanUpdates\(/);
+assert.match(projectsPage, /await triggerScanUpdates\(\)/);
 assert.match(projectsPage, /ProjectOverview/);
 assert.match(projectsPage, /ChangeOrderControls/);
 assert.match(projectsPage, /Change orders/i);

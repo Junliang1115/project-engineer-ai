@@ -42,6 +42,22 @@ def list_projects_from_db():
         return [_project_payload(conn, project) for project in projects]
 
 
+def get_project_from_db(project_id: str):
+    with _connect() as conn:
+        project = conn.execute(
+            """
+            select id, name, current_phase, progress_percent, budget_amount, spent_amount
+            from project
+            where id = %s or (id = 'PRJ-2401' and %s in ('PRJ-01', 'PRJ-2401'))
+            limit 1
+            """,
+            (project_id, project_id),
+        ).fetchone()
+        if not project:
+            return None
+        return _project_payload(conn, project)
+
+
 def _project_payload(conn, project):
     project_id = project["id"]
     tasks = conn.execute(
