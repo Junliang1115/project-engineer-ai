@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SharedDetailPanel } from "./SharedControls.jsx";
+import { DetailPanel } from "./components/DetailPanel.jsx";
 import "./ProjectOverview.css";
 
 const changeDeterminationLabels = {
@@ -57,7 +57,7 @@ export function ChangeOrderCard({ item }) {
           </span>
         </div>
       </div>
-      <SharedDetailPanel
+      <DetailPanel
         isOpen={isOpen}
         onToggle={() => setIsOpen(!isOpen)}
         title="Agent Reasoning & Compliance Details"

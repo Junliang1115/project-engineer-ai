@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SharedDetailPanel } from "./SharedControls.jsx";
+import { DetailPanel } from "./components/DetailPanel.jsx";
 import "./ProjectOverview.css";
 
 export function RiskCard({ risk }) {
@@ -45,7 +45,7 @@ export function RiskCard({ risk }) {
           <span className="control-status is-review">{risk.likelihood}</span>
         </div>
       </div>
-      <SharedDetailPanel
+      <DetailPanel
         isOpen={isOpen}
         onToggle={() => setIsOpen(!isOpen)}
         title="Risk Reasoning & Evidence Details"

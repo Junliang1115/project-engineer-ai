@@ -20,7 +20,7 @@ export const projects = [
       { phase: 'Design', estimate: 24, actual: 26.5 },
       { phase: 'Procurement', estimate: 42, actual: 44.1 },
       { phase: 'Construction', estimate: 52, actual: 38.6 },
-      { phase: 'Handover', estimate: 8, actual: 0 },
+      { phase: 'Handover', estimate: 8, actual: 2.4 },
     ],
     milestones: [
       {
@@ -223,8 +223,8 @@ export const projects = [
       { phase: 'Feasibility', estimate: 8, actual: 8.4 },
       { phase: 'Design', estimate: 16, actual: 17.8 },
       { phase: 'Procurement', estimate: 38, actual: 41.2 },
-      { phase: 'Construction', estimate: 14, actual: 0 },
-      { phase: 'Handover', estimate: 2, actual: 0 },
+      { phase: 'Construction', estimate: 14, actual: 5.2 },
+      { phase: 'Handover', estimate: 2, actual: 0.8 },
     ],
     tasks: [
       {
@@ -287,7 +287,7 @@ export const projects = [
       { phase: 'Design', estimate: 10, actual: 9.8 },
       { phase: 'Procurement', estimate: 16, actual: 15.6 },
       { phase: 'Construction', estimate: 18, actual: 16.2 },
-      { phase: 'Handover', estimate: 2, actual: 0 },
+      { phase: 'Handover', estimate: 2, actual: 0.8 },
     ],
     tasks: [
       {
@@ -406,7 +406,7 @@ export const projects = [
       { phase: 'Design', estimate: 20, actual: 21.0 },
       { phase: 'Procurement', estimate: 36, actual: 37.8 },
       { phase: 'Construction', estimate: 40, actual: 29.4 },
-      { phase: 'Handover', estimate: 5, actual: 0 },
+      { phase: 'Handover', estimate: 5, actual: 1.2 },
     ],
     tasks: [
       {
@@ -449,10 +449,10 @@ export const projects = [
     costs: [
       { phase: 'Concept', estimate: 4, actual: 4.1 },
       { phase: 'Feasibility', estimate: 9, actual: 7.2 },
-      { phase: 'Design', estimate: 15, actual: 0 },
-      { phase: 'Procurement', estimate: 22, actual: 0 },
-      { phase: 'Construction', estimate: 16, actual: 0 },
-      { phase: 'Handover', estimate: 2, actual: 0 },
+      { phase: 'Design', estimate: 15, actual: 3.5 },
+      { phase: 'Procurement', estimate: 22, actual: 1.2 },
+      { phase: 'Construction', estimate: 16, actual: 0.8 },
+      { phase: 'Handover', estimate: 2, actual: 0.2 },
     ],
     tasks: [
       {

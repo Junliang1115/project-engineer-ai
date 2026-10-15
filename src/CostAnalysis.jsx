@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Forward, ArrowLeft, Search as MagnifyingGlass, ChevronDown, X } from "lucide-react";
 import { phases } from "./data.js";
 import { Tag, StatusTag } from "./ProjectTokens.jsx";
-import { getControls, Source } from "./SharedControls.jsx";
+import { Source } from "./components/Source.jsx";
 import "./ProjectOverview.css";
 
 const usdMillions = (value) => `$${value.toFixed(1)}M`;
@@ -300,13 +300,45 @@ export const PHASE_MATERIALS = {
   ],
 };
 
+export const DEFAULT_PHASE_COSTS = [
+  { phase: "Concept", estimate: 8.0, actual: 7.8 },
+  { phase: "Feasibility", estimate: 14.0, actual: 14.2 },
+  { phase: "Design", estimate: 24.0, actual: 26.5 },
+  { phase: "Procurement", estimate: 42.0, actual: 44.1 },
+  { phase: "Construction", estimate: 43.2, actual: 36.8 },
+  { phase: "Handover", estimate: 8.0, actual: 2.4 },
+];
+
+export function getProjectPhaseCosts(project) {
+  const existing = project?.costs || [];
+  return phases.map((phaseName) => {
+    const found = existing.find(
+      (c) => c.phase && c.phase.toLowerCase() === phaseName.toLowerCase()
+    );
+    const fallback = DEFAULT_PHASE_COSTS.find((d) => d.phase === phaseName) || {
+      phase: phaseName,
+      estimate: 10,
+      actual: 8,
+    };
+    if (found && (found.estimate > 0 || found.actual > 0)) {
+      return {
+        phase: phaseName,
+        estimate: found.estimate,
+        actual: found.actual,
+      };
+    }
+    return fallback;
+  });
+}
+
 export function getPhaseMaterials(project, phase) {
   const materialsList = PHASE_MATERIALS[phase] || PHASE_MATERIALS.Construction;
   return materialsList;
 }
 
 export function getPhaseExpenditures(project, phase) {
-  const cost = project.costs?.find((c) => c.phase === phase) || { estimate: 0, actual: 0 };
+  const costs = getProjectPhaseCosts(project);
+  const cost = costs.find((c) => c.phase === phase) || { estimate: 0, actual: 0 };
   const est = cost.estimate || 0;
   const act = cost.actual || 0;
 
@@ -620,7 +652,7 @@ export function CostChart({ project, onExploreMore }) {
   const [isExploring, setIsExploring] = useState(false);
   const [activePhase, setActivePhase] = useState(project.phase || "Construction");
 
-  const costs = project.costs || [];
+  const costs = getProjectPhaseCosts(project);
   const maxVal = Math.max(...costs.map((c) => Math.max(c.estimate || 0, c.actual || 0)), 10);
   const chartHeight = 220;
   const chartWidth = 700;
@@ -1064,7 +1096,7 @@ export function PhasePieChart({ breakdown, totalAmount, isActual, selectedCatego
 
 export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
-  const costs = project.costs || [];
+  const costs = getProjectPhaseCosts(project);
   const maxVal = Math.max(...costs.map((c) => Math.max(c.estimate || 0, c.actual || 0)), 10);
   const chartHeight = 220;
   const chartWidth = 760;
@@ -1454,7 +1486,12 @@ export function PhaseExpenseLedger({ project, expenditures, selectedPhase, selec
 }
 
 export function CostOutlook({ project }) {
-  const { actual, committed, forecast, pending } = getControls(project);
+  const costs = getProjectPhaseCosts(project);
+  const actual = costs.reduce((sum, phase) => sum + (phase.actual || 0), 0);
+  const remaining = Math.max(0, (project.budget || 0) - actual);
+  const committed = remaining * 0.7;
+  const forecast = Math.max(project.budget || 0, actual) + (project.budget || 0) * 0.04;
+  const pending = (project.budget || 0) * 0.015;
   return (
     <section className="control-section">
       <div className="section-head">
@@ -1505,7 +1542,7 @@ export function CostAnalysisPage({
     }
   }, [initialPhase]);
 
-  const costs = project.costs || [];
+  const costs = getProjectPhaseCosts(project);
   const currentCost = costs.find((c) => c.phase === selectedPhase) || {
     estimate: 0,
     actual: 0,

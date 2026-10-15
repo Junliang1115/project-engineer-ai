@@ -4,11 +4,11 @@ import Rail from "./Rail.jsx";
 import { CostChart, CostOutlook } from "./CostAnalysis.jsx";
 import RiskControls from "./RiskSection.jsx";
 import ChangeOrderControls from "./ChangeOrderSection.jsx";
-import { getControls, Source } from "./SharedControls.jsx";
+import { Source } from "./components/Source.jsx";
 import "./ProjectOverview.css";
 
 export function AttentionControls({ project }) {
-  const { task } = getControls(project);
+  const task = (project.tasks && project.tasks.find((item) => item.status === "In progress")) || project.tasks?.[0] || { id: "TSK-101", owner: "Project lead" };
   const items = [
     [
       "Change approval",
@@ -43,20 +43,22 @@ export function AttentionControls({ project }) {
         <span>3 decisions · 2 overdue</span>
       </div>
       {items.map(([type, title, owner, due, status, body]) => (
-        <article className="control-item" key={type}>
-          <div>
-            <span className="control-label">{type}</span>
-            <h3>{title}</h3>
-            <p>
-              {owner} · Due {due} 2026
-            </p>
+        <article className="control-card" key={type}>
+          <div className="control-item">
+            <div>
+              <span className="control-label">{type}</span>
+              <h3>{title}</h3>
+              <p>
+                {owner} · Due {due} 2026
+              </p>
+            </div>
+            <div className="control-tag-stack">
+              <span className={`control-status ${status === "Overdue" ? "is-late" : ""}`}>
+                {status}
+              </span>
+            </div>
           </div>
-          <div>
-            <span className={`control-status ${status === "Overdue" ? "is-late" : ""}`}>
-              {status}
-            </span>
-            <Source project={project} title={title} sender={owner} body={body} />
-          </div>
+          <Source project={project} title={title} sender={owner} body={body} />
         </article>
       ))}
     </section>
@@ -84,9 +86,6 @@ export function ProjectOverview({ project, onExploreMore }) {
             </Tag>
           </div>
           <h1>{project.name}</h1>
-          <p>
-            Current milestone: Work package release · Forecast 23 Sep 2026 · Mock data
-          </p>
         </div>
         <div className="detail-progress">
           <strong>{project.progress}%</strong>
@@ -98,14 +97,12 @@ export function ProjectOverview({ project, onExploreMore }) {
       <Rail project={project} />
       <CostChart project={project} onExploreMore={onExploreMore} />
       <AttentionControls project={project} />
-      <RiskControls project={project} />
     </div>
   );
 }
 
 // Re-exports for modular backwards-compatibility
 export {
-  getControls,
   RiskControls,
   ChangeOrderControls,
   CostOutlook,
