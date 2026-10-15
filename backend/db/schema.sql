@@ -116,23 +116,6 @@ create table if not exists lesson (
   business text
 );
 
-create table if not exists workforce (
-  workforce_id uuid primary key default gen_random_uuid(),
-  worker_type text not null,
-  specification text,
-  total_headcount integer not null default 1
-);
-
-create table if not exists workforce_requirement (
-  workforce_requirement_id uuid primary key default gen_random_uuid(),
-  project_id text not null references project(id) on delete cascade,
-  phase_id uuid references project_phase(phase_id) on delete set null,
-  worker_type text not null,
-  specification text,
-  workforce_id uuid not null references workforce(workforce_id) on delete restrict,
-  required_count integer not null default 1
-);
-
 create table if not exists request (
   request_id text primary key,
   project_id text not null references project(id) on delete cascade,

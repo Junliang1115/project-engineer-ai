@@ -69,7 +69,7 @@ class EmailFacts(BaseModel):
     task_id: str = Field(default="", description="Explicit task reference code, e.g. 'TSK-102'.")
     request_id: str = Field(default="", description="Explicit request reference code, e.g. 'CR-001' or 'TQ-002'.")
     reported_date: date | None = Field(default=None, description="Date reported in message header or body.")
-    reported_status: Literal["", "not_started", "in_progress", "complete", "blocked"] = Field(
+    reported_status: Literal["", "not_started", "in_progress", "completed", "blocked"] = Field(
         default="",
         description="Normalized task lifecycle status."
     )
@@ -97,7 +97,7 @@ class EmailFacts(BaseModel):
 
 #### 3. Deterministic Reconciler & Safety Guardrails
 To prevent hallucinations and protect project data integrity, the pipeline applies hard deterministic guardrails:
-- **Forward-Only State Transitions**: Only valid forward progressions are permitted automatically (`not_started` -> `in_progress` -> `complete`). Regressions, cancellations, or skipped milestones require human review.
+- **Forward-Only State Transitions**: Only valid forward progressions are permitted automatically (`not_started` -> `in_progress` -> `completed`). Regressions, cancellations, or skipped milestones require human review.
 - **Change Order Isolation**: Emails proposing change orders or cost modifications are strictly mapped to `needs_review` and recorded in `activity_log`. They **never** automatically modify budgets, costs, or schedule baselines.
 - **Stale Update Prevention**: Compares the email's timestamp against prior logged updates for that task. Outdated reports cannot overwrite newer status changes.
 - **Untrusted Content Sanitization**: Raw email text is treated as untrusted data. The LLM cannot construct or execute raw SQL.
@@ -107,7 +107,7 @@ Database operations are handled securely through the Database MCP server (`backe
 - **`lookup_email_context`**: Validates project existence, task IDs, and current state.
 - **`apply_email_decision`**: Executes the changes in an atomic PostgreSQL transaction:
   - Inserts a record into `activity_log` with the foreign key `task_id`, `source_type='gmail_scanner'`, `source_path=<Message ID>`, `state='applied'|'needs_review'`, and sender/quote metadata stored in `processing_details`.
-  - Updates the corresponding record in `project_task` (e.g., `status = 'complete'`).
+  - Updates the corresponding record in `project_task` (e.g., `status = 'completed'`).
   - Protected by a unique partial index on `activity_log(source_type, source_path)`.
 
 

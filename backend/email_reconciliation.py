@@ -2,8 +2,7 @@
 
 import os
 import re
-from datetime import date
-from email.utils import parsedate_to_datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -15,7 +14,7 @@ class EmailFacts(BaseModel):
     task_id: str = ""
     request_id: str = ""
     reported_date: date | None = None
-    reported_status: Literal["", "not_started", "in_progress", "complete", "blocked"] = ""
+    reported_status: Literal["", "not_started", "in_progress", "completed", "blocked"] = ""
     destination: Literal["activity_log", "project_task", "request", "review_only"] = "review_only"
     action: Literal["create", "update", "no_change", "review"] = "review"
     evidence: str = Field(
@@ -37,7 +36,7 @@ Distinguish clearly between 'evidence' and 'summary':
 - 'summary': Write a concise 1-2 sentence summary covering the entire email's message and context.
 
 For reported_status, normalize any completion/progress words to one of:
-- 'complete': if the task is finished, completed, concluded, signed off, wrapped up, or done.
+- 'completed': if the task is finished, completed, concluded, signed off, wrapped up, or done.
 - 'in_progress': if the task has started, is underway, ongoing, progressing, or active.
 - 'blocked': if the task is blocked, delayed, held, or obstructed.
 - 'not_started': if the task is planned, pending, or not yet started.
@@ -50,13 +49,22 @@ Date header: {date}
 Body: {body}"""
 
 
+def create_email_model():
+    """Create a V4 Flash-compatible model for forced structured extraction."""
+    from langchain_deepseek import ChatDeepSeek
+
+    if not os.getenv("DEEPSEEK_API_KEY"):
+        raise ValueError("DEEPSEEK_API_KEY is required")
+    return ChatDeepSeek(
+        model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+        temperature=0,
+        extra_body={"thinking": {"type": "disabled"}},
+    )
+
+
 def classify_email(email: dict, model=None) -> EmailFacts:
     if model is None:
-        from langchain_deepseek import ChatDeepSeek
-
-        if not os.getenv("DEEPSEEK_API_KEY"):
-            raise ValueError("DEEPSEEK_API_KEY is required")
-        model = ChatDeepSeek(model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"), temperature=0)
+        model = create_email_model()
     structured = model.with_structured_output(EmailFacts)
     prompt = EXTRACTION_PROMPT.format(
         subject=email.get("subject", "")[:500],
@@ -89,17 +97,11 @@ def decide_email(facts: EmailFacts, context: dict, email: dict) -> dict:
             return _review("Task match is uncertain")
         status = facts.reported_status
         transition = (task.get("status"), status)
-        if transition not in {("not_started", "in_progress"), ("in_progress", "complete")}:
+        if transition not in {("not_started", "in_progress"), ("in_progress", "completed")}:
             return _review("Task status transition requires review")
-        try:
-            email_date = parsedate_to_datetime(email.get("date", "")).date()
-        except (TypeError, ValueError):
-            email_date = None
-        if not facts.reported_date or (
-            facts.reported_date != email_date
-            and facts.reported_date.isoformat() not in facts.evidence
-            and facts.reported_date.isoformat() not in source
-        ):
+        if not facts.reported_date:
+            return _review("Reported date is required for a task update")
+        if not _reported_date_is_supported(facts.reported_date, source):
             return _review("Reported date is not supported by email")
         last_date = context.get("last_applied_source_date")
         if not facts.reported_date or (last_date and facts.reported_date <= date.fromisoformat(last_date)):
@@ -125,3 +127,16 @@ def decide_email(facts: EmailFacts, context: dict, email: dict) -> dict:
     if facts.action == "no_change":
         return {"state": "no_change", "actions": []}
     return _review("No supported automatic action")
+
+
+def _reported_date_is_supported(reported_date: date, source: str) -> bool:
+    if reported_date.isoformat() in source:
+        return True
+    for match in re.finditer(r"\b\d{1,2}\s+[A-Za-z]+\s+\d{4}\b", source):
+        for date_format in ("%d %B %Y", "%d %b %Y"):
+            try:
+                if datetime.strptime(match.group(), date_format).date() == reported_date:
+                    return True
+            except ValueError:
+                continue
+    return False

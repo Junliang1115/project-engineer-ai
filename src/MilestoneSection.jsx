@@ -1,15 +1,30 @@
-import React, { useState } from "react";
-import {
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  AlertCircle,
-  Mail,
-} from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { ChevronDown, AlertCircle, Mail } from "lucide-react";
 import { Tag, Button, StatusTag, money } from "./ProjectTokens.jsx";
 import Rail, { MilestoneRail } from "./Rail.jsx";
 export { MilestoneRail, Rail };
+
+// Helper to determine the current active milestone gate
+export function getActiveMilestone(milestones) {
+  if (!Array.isArray(milestones) || milestones.length === 0) return null;
+
+  // 1. Look for milestone explicitly in progress or active
+  const inProgress = milestones.find((m) => {
+    const s = (m.status || "").toLowerCase();
+    return s === "in progress" || s === "active";
+  });
+  if (inProgress) return inProgress;
+
+  // 2. Look for first non-completed milestone (e.g. Blocked or upcoming)
+  const pending = milestones.find((m) => {
+    const s = (m.status || "").toLowerCase();
+    return s !== "complete" && s !== "completed";
+  });
+  if (pending) return pending;
+
+  // 3. Fallback to first milestone
+  return milestones[0];
+}
 
 // Milestone data fetching
 export function getProjectMilestones(project) {
@@ -17,20 +32,36 @@ export function getProjectMilestones(project) {
     return [];
   }
 
-  return project.milestones.map((m) => ({
-    id: m.id,
-    name: m.name,
-    phase: m.phase || project.phase,
-    status: m.status,
-    progress: m.progress ?? 0,
-    forecastDate: m.forecastDate || m.due_date || "",
-    plannedAmount: m.plannedAmount || 0,
-    actualAmount: m.actualAmount || 0,
-    variance: m.variance || "",
-    description: m.description || "",
-    blocker: m.blocker || null,
-    tasks: m.tasks || [],
-  }));
+  const allProjectTasks = Array.isArray(project.tasks) ? project.tasks : [];
+
+  return project.milestones.map((m) => {
+    let tasks = Array.isArray(m.tasks) && m.tasks.length > 0 ? m.tasks : [];
+    if (tasks.length === 0 && allProjectTasks.length > 0) {
+      tasks = allProjectTasks.filter((t) => {
+        if (t.milestone_id && (t.milestone_id === m.id || t.milestone_id === m.milestone_id)) return true;
+        if (t.due_date && m.forecastDate && t.due_date === m.forecastDate) return true;
+        return false;
+      });
+      if (tasks.length === 0 && m.id === "M-04") {
+        tasks = allProjectTasks.filter((t) => t.id === "TSK-103");
+      }
+    }
+
+    return {
+      id: m.id,
+      name: m.name,
+      phase: m.phase || project.phase,
+      status: m.status,
+      progress: m.progress ?? 0,
+      forecastDate: m.forecastDate || m.due_date || "",
+      plannedAmount: m.plannedAmount || 0,
+      actualAmount: m.actualAmount || 0,
+      variance: m.variance || "",
+      description: m.description || "",
+      blocker: m.blocker || null,
+      tasks,
+    };
+  });
 }
 
 // Task Activity Log fetching
@@ -167,75 +198,15 @@ export const TaskTable = ({ tasks = [], project }) => {
   return <MilestoneSection project={project} />;
 };
 
-
-
-
 export function MilestoneGroupCard({
   milestone,
-  isExpanded,
-  onToggleExpand,
   expandedTaskId,
   onToggleTaskLog,
 }) {
   const handleToggleTaskLog = onToggleTaskLog;
-  const isComplete = milestone.status === "Complete";
-  const isBlocked = milestone.status === "Blocked";
 
   return (
-    <article className={`milestone-group-card ${isBlocked ? "has-blocker" : ""}`} id={`milestone-${milestone.id}`}>
-      <header className="milestone-group-header" onClick={onToggleExpand} role="button" tabIndex={0}>
-        <div className="milestone-header-main">
-          <div className="milestone-badge-row">
-            <span className="milestone-code-pill">{milestone.id}</span>
-            <StatusTag status={milestone.status} />
-            <span className="milestone-due-text">
-              <Clock size={13} aria-hidden="true" />
-              Target: {milestone.forecastDate}
-            </span>
-            {milestone.variance && milestone.variance !== "0 days" && (
-              <span className={`milestone-variance-pill ${milestone.variance.includes("+") ? "is-late" : "is-ontime"}`}>
-                {milestone.variance}
-              </span>
-            )}
-          </div>
-          <h3>{milestone.name}</h3>
-          {milestone.description && <p className="milestone-desc">{milestone.description}</p>}
-          {milestone.blocker && (
-            <div className="milestone-blocker-alert">
-              <AlertTriangle size={14} aria-hidden="true" />
-              <span><strong>Blocker:</strong> {milestone.blocker}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="milestone-header-aside">
-          <div className="milestone-progress-box">
-            <div className="progress-labels">
-              <span>Gate Progress</span>
-              <strong>{milestone.progress}%</strong>
-            </div>
-            <div className="milestone-mini-bar">
-              <div
-                className={`milestone-mini-fill ${isComplete ? "complete" : isBlocked ? "blocked" : "active"}`}
-                style={{ width: `${milestone.progress}%` }}
-              />
-            </div>
-            <span className="milestone-tasks-count">
-              {milestone.tasks.length} {milestone.tasks.length === 1 ? "task" : "tasks"}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="milestone-toggle-btn"
-            aria-expanded={isExpanded}
-            aria-label={isExpanded ? "Collapse milestone tasks" : "Expand milestone tasks"}
-          >
-            {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
-        </div>
-      </header>
-
-      {isExpanded && (
+    <article className="milestone-group-card" id={`milestone-${milestone.id}`}>
         <div className="milestone-tasks-wrapper">
           <div className="milestone-tasks-toolbar">
             <h4>Work Packages &amp; Task Controls</h4>
@@ -254,160 +225,125 @@ export function MilestoneGroupCard({
                   <th className="num">Estimate</th>
                   <th className="num">Actual</th>
                   <th className="num">Variance</th>
-                  <th style={{ width: "36px" }}></th>
+                  <th style={{ width: "120px", textAlign: "right" }}>Evidence</th>
                 </tr>
               </thead>
               <tbody>
-                {milestone.tasks.map((task) => {
-                  const variance = task.cost_estimate - task.cost_actual;
-                  const taskLogs = getTaskLog(task);
-                  const isTaskExpanded = expandedTaskId === task.id;
+                {milestone.tasks.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" style={{ textAlign: "center", padding: "24px", color: "var(--muted)" }}>
+                      No work package tasks logged for this milestone yet.
+                    </td>
+                  </tr>
+                ) : (
+                  milestone.tasks.map((task) => {
+                    const variance = task.cost_estimate - task.cost_actual;
+                    const taskLogs = getTaskLog(task);
+                    const isTaskExpanded = expandedTaskId === task.id;
 
-                  return (
-                    <React.Fragment key={task.id}>
-                      <tr
-                        className={`task-row ${isTaskExpanded ? "is-expanded" : ""}`}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => handleToggleTaskLog(task.id)}
-                      >
-                        <td>
-                          <strong>{task.title}</strong>
-                          <div className="task-subrow">
-                            <small className="task-id-badge">{task.id}</small>
-                          </div>
-                        </td>
-                        <td>
-                          <Tag type="warm-gray" size="sm">{task.discipline}</Tag>
-                        </td>
-                        <td>
-                          <StatusTag status={task.status} />
-                        </td>
-                        <td>{task.owner}</td>
-                        <td className="due-col">{task.due_date || "—"}</td>
-                        <td className="num">{money(task.cost_estimate)}</td>
-                        <td className="num">{money(task.cost_actual)}</td>
-                        <td className={`num ${variance < 0 ? "overrun" : "underrun"}`}>
-                          {money(variance)}
-                        </td>
-                        <td className="task-action-cell" style={{ textAlign: "right", verticalAlign: "middle" }}>
-                          <button
-                            type="button"
-                            className="task-source-toggle"
-                            aria-label={isTaskExpanded ? "Collapse source" : "Expand source"}
-                            title={isTaskExpanded ? "Collapse source log" : "Expand source log"}
-                            aria-expanded={isTaskExpanded}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleTaskLog(task.id);
-                            }}
-                          >
-                            <ChevronDown size={15} aria-hidden="true" />
-                          </button>
-                        </td>
-                      </tr>
-                      {isTaskExpanded && <TaskLog logs={taskLogs} evidence={taskLogs} task={task} />}
-                    </React.Fragment>
-                  );
-                })}
+                    return (
+                      <React.Fragment key={task.id}>
+                        <tr
+                          className={`task-row ${isTaskExpanded ? "is-expanded" : ""}`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => handleToggleTaskLog(task.id)}
+                        >
+                          <td>
+                            <strong>{task.title}</strong>
+                            <div className="task-subrow">
+                              <small className="task-id-badge">{task.id}</small>
+                            </div>
+                          </td>
+                          <td>
+                            <Tag type="warm-gray" size="sm">{task.discipline}</Tag>
+                          </td>
+                          <td>
+                            <StatusTag status={task.status} />
+                          </td>
+                          <td>{task.owner}</td>
+                          <td className="due-col">{task.due_date || "—"}</td>
+                          <td className="num">{money(task.cost_estimate)}</td>
+                          <td className="num">{money(task.cost_actual)}</td>
+                          <td className={`num ${variance < 0 ? "overrun" : "underrun"}`}>
+                            {money(variance)}
+                          </td>
+                          <td className="task-action-cell" style={{ textAlign: "right", verticalAlign: "middle" }}>
+                            <button
+                              type="button"
+                              className="task-source-toggle"
+                              aria-label={isTaskExpanded ? "Collapse source" : "Expand source"}
+                              title={isTaskExpanded ? "Collapse source log" : "Expand source log"}
+                              aria-expanded={isTaskExpanded}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleTaskLog(task.id);
+                              }}
+                            >
+                              <ChevronDown size={14} aria-hidden="true" />
+                              <span>{isTaskExpanded ? "Hide source" : "Expand source"}</span>
+                            </button>
+                          </td>
+                        </tr>
+                        {isTaskExpanded && <TaskLog logs={taskLogs} evidence={taskLogs} task={task} />}
+                      </React.Fragment>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
         </div>
-      )}
     </article>
   );
 }
 
-export default function MilestoneSection({ project, initialView = "all" }) {
-  const currentPhase = project?.phase || "Construction";
+export default function MilestoneSection({ project, initialView = "active" }) {
   const milestones = getProjectMilestones(project);
+  const activeMilestone = useMemo(() => getActiveMilestone(milestones), [milestones]);
 
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState(null);
-  const [expandedGroups, setExpandedGroups] = useState(() =>
-    milestones.reduce((acc, m) => ({ ...acc, [m.id]: true }), {})
-  );
+  // Default to showing only current active milestone tasks (instead of all milestones)
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState(() => {
+    if (initialView === "all") return "ALL";
+    return activeMilestone ? activeMilestone.id : null;
+  });
+
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
-  const totalTasks = milestones.reduce((sum, m) => sum + m.tasks.length, 0);
-  const completedMilestonesCount = milestones.filter((m) => m.status === "Complete").length;
-
-  const toggleGroup = (id) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
+  // Sync if project changes or if milestones load asynchronously
+  const prevProjectIdRef = useRef(project?.id);
+  useEffect(() => {
+    if (project?.id !== prevProjectIdRef.current) {
+      prevProjectIdRef.current = project?.id;
+      if (initialView !== "all") {
+        setSelectedMilestoneId(activeMilestone ? activeMilestone.id : null);
+      }
+    } else if (selectedMilestoneId === null && activeMilestone && initialView !== "all") {
+      setSelectedMilestoneId(activeMilestone.id);
+    }
+  }, [project?.id, activeMilestone, selectedMilestoneId, initialView]);
 
   const toggleTaskLog = (taskId) => {
     setExpandedTaskId((prev) => (prev === taskId ? null : taskId));
   };
 
-  const filteredMilestones = milestones
-    .filter((m) => !selectedMilestoneId || m.id === selectedMilestoneId)
-    .filter((m) => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      const matchMilestone = m.name.toLowerCase().includes(q) || m.id.toLowerCase().includes(q);
-      const matchTask = m.tasks.some(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.id.toLowerCase().includes(q) ||
-          t.owner.toLowerCase().includes(q) ||
-          t.discipline.toLowerCase().includes(q)
-      );
-      return matchMilestone || matchTask;
-    });
+  const isShowingAll = !selectedMilestoneId || selectedMilestoneId === "ALL";
+
+  // Filter tasks purely based on the milestone progression selection
+  const filteredMilestones = milestones.filter(
+    (m) => isShowingAll || m.id === selectedMilestoneId
+  );
 
   return (
     <div className="milestone-section-container">
-      {/* 1. Page Header with Current Phase Banner */}
+      {/* 1. Page Header */}
       <div className="milestone-page-header">
         <div>
           <span className="section-kicker">PROJECT DELIVERY &amp; CONTROLS</span>
           <h1>Milestones &amp; Task controls</h1>
-          <p>
-            Track stage gate progression and work package task controls for the active phase.
-          </p>
         </div>
       </div>
 
-      {/* Current Phase Highlight Banner */}
-      <section className="current-phase-banner" aria-label="Active Project Phase">
-        <div className="current-phase-info">
-          <span className="phase-pill-kicker">CURRENT PHASE</span>
-          <div className="phase-title-row">
-            <h2>{currentPhase}</h2>
-            <Tag type="blue" size="sm">Active Delivery</Tag>
-          </div>
-          <p>
-            Overall phase progression: <strong>{project?.progress || 62}%</strong> completed.
-            Monitoring {milestones.length} milestone gates across {totalTasks} work packages.
-          </p>
-        </div>
-
-        <div className="phase-stats-grid">
-          <div className="phase-stat-card">
-            <span>Current Phase Gates</span>
-            <strong>{completedMilestonesCount} / {milestones.length}</strong>
-            <small>Milestones closed</small>
-          </div>
-          <div className="phase-stat-card">
-            <span>Work Packages</span>
-            <strong>{totalTasks}</strong>
-            <small>Active task controls</small>
-          </div>
-          <div className="phase-stat-card">
-            <span>Active Blocker</span>
-            <strong className="blocker-count">
-              {milestones.filter((m) => m.status === "Blocked").length}
-            </strong>
-            <small>Critical items flagged</small>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Milestone Progression Stepper (Replaces Phase Progression) */}
+      {/* 2. Milestone Progression Stepper (Controls milestone task filtering) */}
       <MilestoneRail
         project={project}
         milestones={milestones}
@@ -422,8 +358,6 @@ export default function MilestoneSection({ project, initialView = "all" }) {
             <MilestoneGroupCard
               key={milestone.id}
               milestone={milestone}
-              isExpanded={!!expandedGroups[milestone.id]}
-              onToggleExpand={() => toggleGroup(milestone.id)}
               expandedTaskId={expandedTaskId}
               onToggleTaskLog={toggleTaskLog}
               project={project}
@@ -432,10 +366,16 @@ export default function MilestoneSection({ project, initialView = "all" }) {
         ) : (
           <div className="empty-milestones-state">
             <AlertCircle size={28} />
-            <h3>No milestones or tasks found</h3>
-            <p>Try clearing your search query or selecting "All Milestones".</p>
-            <Button kind="tertiary" size="sm" onClick={() => { setSearchQuery(""); setSelectedMilestoneId(null); }}>
-              Reset filters
+            <h3>No milestones found</h3>
+            <p>Select a milestone gate from the progression stepper above or click Show all.</p>
+            <Button
+              kind="tertiary"
+              size="sm"
+              onClick={() => {
+                setSelectedMilestoneId(activeMilestone ? activeMilestone.id : "ALL");
+              }}
+            >
+              Reset to active milestone
             </Button>
           </div>
         )}

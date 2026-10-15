@@ -22,7 +22,10 @@ export function Rail({
 
   if (isMilestone) {
     const list = milestones || project?.milestones || [];
-    const completedCount = list.filter((m) => m.status === "Complete").length;
+    const completedCount = list.filter((m) => {
+      const s = (m.status || "").toLowerCase();
+      return s === "completed" || s === "complete";
+    }).length;
     const currentPhaseName = currentPhase || project?.phase || "Construction";
 
     return (
@@ -30,44 +33,44 @@ export function Rail({
         <div className="section-head">
           <div>
             <h2>{title || "Milestone progression"}</h2>
-            <p>{subtitle || `Stage gate milestone sequence for the current ${currentPhaseName} phase.`}</p>
           </div>
-          <span className="phase-count">
-            {completedCount} / {list.length}
-          </span>
+          <div className="milestone-phase-deck">
+            <span>{currentPhaseName}</span>
+          </div>
         </div>
         <ol
-          className="phase-rail milestone-rail"
+          className="phase-rail"
           style={{ gridTemplateColumns: `repeat(${Math.max(1, list.length)}, minmax(0, 1fr))` }}
         >
           {list.map((m, idx) => {
-            const isComplete = m.status === "Complete";
-            const isBlocked = m.status === "Blocked";
-            const isInProgress = m.status === "In progress";
+            const s = (m.status || "").toLowerCase();
+            const isComplete = s === "completed" || s === "complete";
+            const isBlocked = s === "blocked";
+            const isInProgress = s === "in progress" || s === "active";
             const isSelected = selectedMilestoneId === m.id;
 
             const stateClass = isComplete
               ? "complete"
               : isBlocked
-              ? "blocked"
-              : isInProgress
-              ? "current"
-              : "remaining";
+                ? "blocked"
+                : isInProgress
+                  ? "current"
+                  : "remaining";
 
             return (
               <li
                 key={m.id}
                 className={`${stateClass} ${isSelected ? "is-selected" : ""} is-clickable`}
-                onClick={() => onSelectMilestone?.(isSelected ? null : m.id)}
+                onClick={() => onSelectMilestone?.(isSelected ? "ALL" : m.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelectMilestone?.(isSelected ? null : m.id);
+                    onSelectMilestone?.(isSelected ? "ALL" : m.id);
                   }
                 }}
-                title={`${m.id}: ${m.name} (${m.status})`}
+                title={`${m.id}: ${m.name} (${m.status}) - click to filter tasks`}
               >
                 <span className="phase-symbol">
                   {isComplete ? "✓" : isBlocked ? "!" : idx + 1}
@@ -82,7 +85,6 @@ export function Rail({
                   </small>
                 </div>
               </li>
-
             );
           })}
         </ol>

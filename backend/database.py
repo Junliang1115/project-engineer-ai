@@ -113,17 +113,6 @@ def _project_payload(conn, project):
         """,
         (project_id,),
     ).fetchall()
-    workforce = conn.execute(
-        """
-        select wr.worker_type, wr.specification, wr.required_count, 0 as available_count,
-               null as task_id, null as task_title, null as discipline, pp.name as phase
-        from workforce_requirement wr
-        left join project_phase pp on pp.phase_id = wr.phase_id
-        where wr.project_id = %s
-        order by wr.worker_type
-        """,
-        (project_id,),
-    ).fetchall()
     change_orders = conn.execute(
         """
         select request_id, title, request_type, description, status
@@ -246,10 +235,6 @@ def _project_payload(conn, project):
             }
             for index, row in enumerate(activities)
         ],
-        "workforce": [
-            _workforce_payload(row, project["current_phase"])
-            for row in workforce
-        ],
         "changeOrders": [
             {
                 "id": row["request_id"],
@@ -281,32 +266,6 @@ def _discipline_from_task(title):
     if "fire" in title:
         return "Life Safety"
     return "Project Controls"
-
-
-def _workforce_payload(row, current_phase):
-    required = int(row["required_count"] or 0)
-    available = int(row["available_count"] or 0)
-    need_to_hire = max(0, required - available)
-    phase = row["phase"] or current_phase
-    phase_type = "current" if phase == current_phase else "future"
-    computed_status = "Hire Needed" if need_to_hire > 0 else "Allocated"
-    lead_time = "Immediate" if (phase_type == "current" and need_to_hire > 0) else "Planning"
-    return {
-        "id": row["task_id"] or row["worker_type"],
-        "task": row["task_title"] or "Unassigned work package",
-        "phase": phase,
-        "discipline": row["discipline"] or "General",
-        "phaseType": phase_type,
-        "workerType": row["worker_type"],
-        "spec": row["specification"],
-        "required": required,
-        "available": available,
-        "needToHire": need_to_hire,
-        "status": computed_status,
-        "leadTime": lead_time,
-        "isAdvanceHire": phase_type != "current" and need_to_hire > 0,
-        "isImmediateHire": phase_type == "current" and need_to_hire > 0,
-    }
 
 
 def list_project_phases(project_id: str):

@@ -20,12 +20,12 @@ const changeOrderSection = readSrc("ChangeOrderSection.jsx");
 const riskSection = readSrc("RiskSection.jsx");
 const sharedControls = readSrc("SharedControls.jsx");
 const costAnalysis = readSrc("CostAnalysis.jsx");
-const workforceSection = readSrc("WorkforceSection.jsx");
 const lessonsRegister = readSrc("LessonRegister.jsx");
 const rail = readSrc("Rail.jsx");
 const accountPage = readSrc("AccountPage.jsx");
 const data = readSrc("data.js");
 const css = readSrc("App.css");
+const projectSidebarCss = readSrc("ProjectSidebar.css");
 
 // ---------------------------------------------------------------------------
 // 1. App Shell, Navigation & Routing
@@ -89,7 +89,7 @@ assert.doesNotMatch(accountPage, /Indexed/i);
 // ---------------------------------------------------------------------------
 // 4. Projects Hub & Sidebar Navigation
 // ---------------------------------------------------------------------------
-assert.match(projectsList, /Capital projects/i);
+assert.match(projectsList, /Project profiles/i);
 assert.match(projectsList, /PROJECT OVERVIEW/i);
 assert.match(projectsList, /Project register/i);
 assert.match(projectsList, /All projects/i);
@@ -101,17 +101,29 @@ assert.match(projectsList, /Search project, phase, or ID/i);
 assert.doesNotMatch(projectsList, /import \{ projects \} from "\.\/data\.js"/);
 assert.doesNotMatch(projectsList, /Mean progress/i);
 
-assert.match(projectSidebar, /All projects/i);
-assert.match(projectSidebar, /Workforce/i);
+assert.doesNotMatch(projectSidebar, /All projects/i);
+assert.match(projectSidebar, /aria-label="Back to projects"/i);
+assert.doesNotMatch(projectSidebar, /\/> Back<\/button>/i);
+assert.match(projectSidebar, /setIsSidebarOpen/);
+assert.match(projectSidebar, /Collapse project sidebar/);
+assert.match(projectSidebar, /Expand project sidebar/);
+assert.doesNotMatch(projectSidebar, /Workforce/i);
 assert.match(projectSidebar, /Change orders/i);
 assert.doesNotMatch(projectSidebar, /Critical deliveries/i);
+assert.match(projectSidebarCss, /\.project-section-sidebar\s*\{[^}]*overflow-y:\s*hidden/s);
+assert.match(projectSidebarCss, /\.project-section-sidebar\s*\{[^}]*position:\s*fixed/s);
+assert.match(projectSidebarCss, /\.project-section-content\.page\s*\{[^}]*margin:\s*0 auto/s);
+assert.match(projectSidebarCss, /\.project-section-content\.page\s*\{[^}]*max-width:\s*1200px/s);
+assert.match(projectSidebarCss, /\.project-workspace\s*\{[^}]*column-gap:\s*24px/s);
+assert.doesNotMatch(projectSidebarCss, /\.project-workspace\.sidebar-collapsed\s*\{[^}]*grid-template-columns/s);
+assert.match(projectSidebarCss, /\.project-section-content\s*\{[^}]*grid-column:\s*2/s);
 
 // ---------------------------------------------------------------------------
 // 5. Project Detail & Modular Controls
 // ---------------------------------------------------------------------------
 assert.match(projectsPage, /ProjectsList/);
 assert.match(projectsPage, /TaskTable/);
-assert.match(projectsPage, /WorkforceOverview/);
+assert.doesNotMatch(projectsPage, /WorkforceOverview/);
 assert.match(projectsPage, /CostAnalysisPage/);
 assert.match(projectsPage, /MilestoneSection/);
 assert.match(projectsPage, /Rail/);
@@ -125,7 +137,7 @@ assert.match(projectsPage, /ActivityLog/i);
 assert.match(projectsPage, /Activity log/i);
 assert.match(projectsPage, /project\.activities/i);
 assert.match(projectsPage, /Issues and lessons learned/i);
-assert.match(projectsPage, /workforce:\s*\(?\s*<>\s*<h1>Workforce/i);
+assert.doesNotMatch(projectsPage, /\bworkforce\b/i);
 assert.doesNotMatch(projectsPage, /import \{ projects \} from "\.\/data\.js"/);
 assert.doesNotMatch(projectsPage, /Critical deliveries/i);
 
@@ -139,11 +151,16 @@ assert.match(rail, /Phase progression/i);
 assert.match(milestoneSection, /Milestone progression/i);
 assert.match(milestoneSection, /MilestoneRail/i);
 assert.match(milestoneSection, /MilestoneGroupCard/i);
+assert.match(milestoneSection, /getActiveMilestone/i);
+assert.match(milestoneSection, /initialView\s*=\s*"active"/i);
 assert.match(milestoneSection, /TaskLog/i);
 assert.match(milestoneSection, /Source evidence/i);
 assert.match(milestoneSection, /Validation note/i);
 assert.match(milestoneSection, /Expand source/i);
 assert.match(milestoneSection, /sourceType/i);
+assert.doesNotMatch(milestoneSection, /milestone-group-header/);
+assert.match(milestoneSection, /milestone-tasks-wrapper/);
+assert.match(css, /\.phase-rail li\.is-selected\s*\{[^}]*border:\s*1px solid rgba\(255, 255, 255, 0\.22\)/s);
 
 // ---------------------------------------------------------------------------
 // 7. Cost Analysis & Financial Outlook
@@ -176,16 +193,6 @@ assert.match(riskSection, /Recommended action/i);
 assert.match(sharedControls, /risk-reasoning-card/i);
 assert.match(sharedControls, /risk-reasoning-main/i);
 assert.match(sharedControls, /risk-reasoning-aside/i);
-
-// ---------------------------------------------------------------------------
-// 10. Workforce Management
-// ---------------------------------------------------------------------------
-assert.match(workforceSection, /Site Worker Management/i);
-assert.match(workforceSection, /Worker Type Needed/i);
-assert.match(workforceSection, /Spec \/ Certification/i);
-assert.match(workforceSection, /Need to Hire/i);
-assert.match(workforceSection, /Hiring Action List/i);
-assert.doesNotMatch(workforceSection, /Milestone Workforce Readiness/i);
 
 // ---------------------------------------------------------------------------
 // 11. Lessons Learned & Seed Mock Reference

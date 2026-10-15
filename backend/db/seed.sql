@@ -221,21 +221,6 @@ insert into lesson (project_id, title, knowledge_area, root_cause, description, 
 values
   ('PRJ-2401', 'Pipe wall thickness below project class requirement', 'Piping', 'Vendor drawing revision did not reflect latest project pipe class.', 'Always cross-check uploaded layout drawings against pipe class specification before installation release.', 'Add pipe class verification to work package release checklist.');
 
-insert into workforce (worker_type, specification, total_headcount)
-values ('Pipe fitter', 'CS piping, pump tie-in, permit-to-work trained', 3);
-
-insert into workforce_requirement (project_id, phase_id, worker_type, specification, workforce_id, required_count)
-select
-  'PRJ-2401',
-  pp.phase_id,
-  'Pipe fitter',
-  'CS piping, pump tie-in, permit-to-work trained',
-  w.workforce_id,
-  6
-from project_phase pp
-join workforce w on w.worker_type = 'Pipe fitter'
-where pp.project_id = 'PRJ-2401' and pp.name = 'Construction';
-
 insert into "user" (user_id, email, status)
 values
   ('11111111-1111-1111-1111-111111111111', 'project.engineer@example.com', 'active')

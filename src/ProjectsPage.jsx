@@ -12,8 +12,6 @@ import ChangeOrderControls from "./ChangeOrderSection.jsx";
 import RiskControls from "./RiskSection.jsx";
 import TechnicalQueriesSection from "./TechnicalQueriesSection.jsx";
 import Rail from "./Rail.jsx";
-
-import WorkforceOverview, { WORKFORCE_PROFILES, getProjectWorkforceTasks } from "./WorkforceSection.jsx";
 import {
   CostChart,
   CostOutlook,
@@ -32,9 +30,6 @@ import MilestoneSection, {
 
 // Re-exports for modular backwards-compatibility
 export {
-  WorkforceOverview,
-  WORKFORCE_PROFILES,
-  getProjectWorkforceTasks,
   CostChart,
   CostAnalysisPage,
   getPhaseExpenditures,
@@ -156,12 +151,6 @@ export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
         overview: <ProjectOverview project={project} onExploreMore={handleExploreMore} />,
 
         milestones: <MilestoneSection project={project} />,
-        workforce: (
-          <>
-            <h1>Workforce</h1>
-            <WorkforceOverview project={project} />
-          </>
-        ),
         costs: (
           <>
             <h1>Cost tracking</h1>
@@ -181,18 +170,8 @@ export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
           </>
         ),
         queries: <TechnicalQueriesSection project={project} />,
-        activity: (
-          <>
-            <h1>Activity log</h1>
-            <ActivityLog project={project} />
-          </>
-        ),
-        issues: (
-          <>
-            <h1>Issues &amp; lessons</h1>
-            <Issues issues={project.issues} />
-          </>
-        ),
+        activity: <ActivityLog project={project} />,
+        issues: <Issues issues={project.issues} />,
       }}
     />
   );

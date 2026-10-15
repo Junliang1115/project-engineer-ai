@@ -94,7 +94,7 @@ export function ProjectsList({ projects, onSelectProject, onRefreshProjects, las
       <div className="page-heading">
         <div>
           <p className="kicker">PROJECT OVERVIEW</p>
-          <h1>Capital projects</h1>
+          <h1>Project Profiles</h1>
           <p>Monitor phase position, delivery progress, cost exposure, and active project controls.</p>
         </div>
         <div className="heading-meta" style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -239,7 +239,7 @@ export function ProjectsList({ projects, onSelectProject, onRefreshProjects, las
           <p>
             {activeFilter !== "all"
               ? "No projects match the selected filter and search criteria."
-              : "Adjust the search term to view matching capital projects."}
+              : "Adjust the search term to view matching project profiles."}
           </p>
           {(query || activeFilter !== "all") && (
             <Button

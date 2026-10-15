@@ -2,7 +2,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "test": "node ./tests/project-smoke.test.mjs"
+    "test": "node ./tests/project-smoke.test.mjs && node ./tests/milestone-active.test.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { LayoutDashboard, CalendarDays, CircleDollarSign, FileDiff, ShieldAlert, ListChecks, FileQuestion, MessagesSquare, BookOpen, ArrowLeft, Users, RotateCw } from "lucide-react";
+import { LayoutDashboard, CalendarDays, CircleDollarSign, FileDiff, ShieldAlert, ListChecks, FileQuestion, MessagesSquare, BookOpen, ArrowLeft, PanelLeftClose, PanelLeftOpen, RotateCw } from "lucide-react";
 import "./ProjectSidebar.css";
 
 const links = [
   ["overview", "Overview", LayoutDashboard],
   ["milestones", "Milestones", CalendarDays],
-  ["workforce", "Workforce", Users],
   ["costs", "Cost tracking", CircleDollarSign],
   ["deliveries", "Change orders", FileDiff],
   ["risks", "Risks", ShieldAlert],
@@ -20,6 +19,7 @@ const readSection = () => {
 
 export default function ProjectSidebar({ project, onBack, sections }) {
   const [active, setActive] = useState(readSection);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   useEffect(() => {
     const sync = () => setActive(readSection());
     window.addEventListener("hashchange", sync);
@@ -29,10 +29,20 @@ export default function ProjectSidebar({ project, onBack, sections }) {
       window.removeEventListener("popstate", sync);
     };
   }, []);
-  return <div className="project-workspace">
-    <aside className="project-section-sidebar">
-      <button type="button" className="project-return" onClick={onBack}><ArrowLeft size={16} /> All projects</button>
-      <div className="project-sidebar-title"><small>{project.id}</small><strong>{project.name}</strong><span>{project.phase}</span></div>
+  return <div className={`project-workspace ${isSidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+    {!isSidebarOpen && (
+      <button type="button" className="project-sidebar-expand" onClick={() => setIsSidebarOpen(true)} aria-label="Expand project sidebar" title="Expand project sidebar">
+        <PanelLeftOpen size={18} aria-hidden="true" />
+      </button>
+    )}
+    <aside className={`project-section-sidebar ${isSidebarOpen ? "open" : "collapsed"}`} aria-hidden={!isSidebarOpen}>
+      <header className="project-sidebar-header">
+        <div className="project-sidebar-actions">
+          <button type="button" className="project-return" onClick={onBack} aria-label="Back to projects"><ArrowLeft size={18} /></button>
+          <button type="button" className="project-sidebar-collapse" onClick={() => setIsSidebarOpen(false)} aria-label="Collapse project sidebar" title="Collapse project sidebar"><PanelLeftClose size={18} aria-hidden="true" /></button>
+        </div>
+        <div className="project-sidebar-title"><small>{project.id}</small><strong>{project.name}</strong><span>{project.phase}</span></div>
+      </header>
       <nav aria-label="Project sections">{links.map(([id, label, Icon]) =>
         <a key={id} href={`#${id}`} aria-current={active === id ? "page" : undefined} onClick={() => setActive(id)}>
           <Icon size={18} aria-hidden="true" /><span>{label}</span>

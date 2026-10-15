@@ -3,16 +3,17 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import list_projects_from_db, list_project_phases, update_project_phase, get_last_updated_at
+from database import list_projects_from_db, get_project_from_db, list_project_phases, update_project_phase, get_last_updated_at
 from agents import run_agent_workflow
+from risk_agent import run_risk_investigation, run_schema_discovery
 from models import AgentRunRequest, AgentRunResponse, PhaseUpdateRequest, PhaseResponse
-from store import agent_runs, projects
 from scan_updates import run_scan, database_tools
 from gmail_service import GmailService
 
 
 # Project Engineer FastAPI Backend
 app = FastAPI(title="Project Engineer Agent Backend")
+agent_runs: dict[str, dict] = {}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,6 +42,16 @@ def get_projects_meta():
     # If a scan was triggered in this server lifetime, use it; otherwise fallback to DB last scan
     timestamp = _last_scan_triggered_at or get_last_updated_at()
     return {"last_updated": timestamp}
+
+
+@app.get("/risk-agent/schema/{project_id}")
+async def discover_risk_schema(project_id: str):
+    return await run_schema_discovery(project_id)
+
+
+@app.post("/risk-agent/investigate")
+async def investigate_risk(request: AgentRunRequest):
+    return await run_risk_investigation(request.project_id, request.message)
 
 
 @app.post("/scan-gmail")
@@ -84,7 +95,9 @@ def update_phase(project_id: str, phase_id: str, request: PhaseUpdateRequest):
 
 @app.post("/agent-runs", response_model=AgentRunResponse)
 def create_agent_run(request: AgentRunRequest):
-    result = run_agent_workflow(request.project_id, request.message, projects)
+    project = get_project_from_db(request.project_id)
+    projects_list = [project] if project else []
+    result = run_agent_workflow(request.project_id, request.message, projects_list)
     agent_runs[result["id"]] = result
     return result
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Forward, ArrowLeft, Search as MagnifyingGlass } from "lucide-react";
+import { Forward, ArrowLeft, Search as MagnifyingGlass, ChevronDown, X } from "lucide-react";
 import { phases } from "./data.js";
 import { Tag, StatusTag } from "./ProjectTokens.jsx";
 import { getControls, Source } from "./SharedControls.jsx";
@@ -34,6 +34,276 @@ export const CATEGORY_CONFIG = {
     lightColor: "rgba(6, 182, 212, 0.15)",
   },
 };
+
+export const PHASE_MATERIALS = {
+  Concept: [
+    {
+      id: "MAT-C01",
+      name: "Architectural 3D Scale Models & High-Density Foam",
+      type: "Modeling & Prototype",
+      spec: "1:200 Scale / High-Density Polyurethane & Laser-cut Acrylic",
+      status: "In Use on Site",
+      activeWorkPackage: "Concept massing & stakeholder design reviews",
+      quantity: "14 assemblies",
+      consumedQty: "14 assemblies",
+      percentConsumed: 100,
+      allocatedCost: 0.12,
+      incurredCost: 0.12,
+      supplier: "KPF Design Partners",
+      millCert: "CERT-MOD-882",
+      complianceStandard: "ISO 9001 / Client Milestone Review",
+    },
+    {
+      id: "MAT-C02",
+      name: "Topographical Survey Targets & Field Consumables",
+      type: "Geospatial Materials",
+      spec: "LIDAR reflective prisms & GPS geodetic benchmark stakes",
+      status: "In Use on Site",
+      activeWorkPackage: "Utility boundary survey & site grid alignment",
+      quantity: "85 units",
+      consumedQty: "85 units",
+      percentConsumed: 100,
+      allocatedCost: 0.08,
+      incurredCost: 0.08,
+      supplier: "Apex Geospatial Ltd",
+      millCert: "GEO-SURV-102",
+      complianceStandard: "RICS Guidance / Ordinance Survey datum",
+    },
+  ],
+  Feasibility: [
+    {
+      id: "MAT-F01",
+      name: "Bentonite Drilling Slurry (Sodium Montmorillonite)",
+      type: "Geotechnical Slurry",
+      spec: "API Spec 13A Section 9 / High-viscosity drilling grade",
+      status: "Completed / Stabilized",
+      activeWorkPackage: "Exploratory boreholes BH-01 to BH-08 stabilization",
+      quantity: "340 MT",
+      consumedQty: "340 MT",
+      percentConsumed: 100,
+      allocatedCost: 0.28,
+      incurredCost: 0.28,
+      supplier: "GeoSupply Industrial",
+      millCert: "QC-BEN-771",
+      complianceStandard: "API Spec 13A / ASTM D5890",
+    },
+    {
+      id: "MAT-F02",
+      name: "Borehole Steel Temporary Casings (150mm & 200mm)",
+      type: "Core Casings",
+      spec: "ASTM A53 Grade B seamless carbon steel casing",
+      status: "Completed / Stabilized",
+      activeWorkPackage: "Soil stratification & groundwater core sampling",
+      quantity: "420 m",
+      consumedQty: "420 m",
+      percentConsumed: 100,
+      allocatedCost: 0.22,
+      incurredCost: 0.22,
+      supplier: "Civic Ground Engineering",
+      millCert: "CAS-CS-202",
+      complianceStandard: "BS EN 1997-2 / Eurocode 7 Geotech",
+    },
+  ],
+  Design: [
+    {
+      id: "MAT-D01",
+      name: "Double-Glazed Acoustic Cladding Test Specimen",
+      type: "Facade Mockup",
+      spec: "Low-E Acoustic Laminated / U-value 1.1 W/m²K, Rw 42dB",
+      status: "Testing In Progress",
+      activeWorkPackage: "Acoustic laboratory sound transmission & thermal cycling test",
+      quantity: "120 m²",
+      consumedQty: "120 m²",
+      percentConsumed: 100,
+      allocatedCost: 0.35,
+      incurredCost: 0.35,
+      supplier: "Saint-Gobain Architectural",
+      millCert: "LAB-SG-4410",
+      complianceStandard: "ASTM E283 / EN 12150-1 / CWCT Standard",
+    },
+    {
+      id: "MAT-D02",
+      name: "Thermal Break Aluminum Mullion Sections (6063-T6)",
+      type: "Facade Framing",
+      spec: "Polyamide thermal strut insulated extruded profiles",
+      status: "Specification Approved",
+      activeWorkPackage: "Wind tunnel boundary-layer deflection modeling",
+      quantity: "650 m",
+      consumedQty: "480 m",
+      percentConsumed: 74,
+      allocatedCost: 0.28,
+      incurredCost: 0.28,
+      supplier: "Schüco International",
+      millCert: "CERT-AL-902",
+      complianceStandard: "EN 755-9 / BS EN 12020",
+    },
+  ],
+  Procurement: [
+    {
+      id: "MAT-P01",
+      name: "Structural Heavy Steel Sections (Grade S355JR)",
+      type: "Structural Metals",
+      spec: "EN 10025-2 hot-rolled wide-flange beams & column sections",
+      status: "Procured & Staged at Port",
+      activeWorkPackage: "Primary superstructure column & transfer truss package",
+      quantity: "2,400 MT",
+      consumedQty: "1,450 MT",
+      percentConsumed: 60,
+      allocatedCost: 2.8,
+      incurredCost: 2.1,
+      supplier: "ArcelorMittal Industrial",
+      millCert: "MILL-AM-88301",
+      complianceStandard: "EN 10025-2 / CE & UKCA Certified",
+    },
+    {
+      id: "MAT-P02",
+      name: "High-Yield Deformed Rebar Steel (Grade B500B)",
+      type: "Reinforcement Steel",
+      spec: "BS 4449:2005 Grade B500B high ductility ribbed bars",
+      status: "Procured & Batch Tested",
+      activeWorkPackage: "Foundation mat, pile caps & core shear walls",
+      quantity: "3,200 MT",
+      consumedQty: "2,100 MT",
+      percentConsumed: 66,
+      allocatedCost: 2.4,
+      incurredCost: 1.8,
+      supplier: "ArcelorMittal Industrial",
+      millCert: "CARES-CERT-7731",
+      complianceStandard: "BS 4449 / CARES Approved",
+    },
+  ],
+  Construction: [
+    {
+      id: "MAT-C101",
+      name: "C50/60 High-Strength Ready-Mix Concrete",
+      type: "Concrete & Mixes",
+      spec: "BS EN 206-1 / 50 MPa characteristic strength, low heat CEM III/A",
+      status: "In Use on Site",
+      activeWorkPackage: "Suspended Floor Slabs L04-L06 & Core Shear Walls (Task TSK-01)",
+      quantity: "14,800 m³",
+      consumedQty: "9,450 m³",
+      percentConsumed: 64,
+      allocatedCost: 2.4,
+      incurredCost: 1.8,
+      supplier: "Titan Concrete & Steel Solutions",
+      millCert: "BATCH-TC-2026-088",
+      complianceStandard: "BS EN 206-1 / ISO 9001 / Batch QA Pass",
+      isLive: true,
+      lastDelivery: "Today, 07:45 AM (8 mixer trucks dispatched)",
+    },
+    {
+      id: "MAT-C102",
+      name: "Grade 500B High-Yield Deformed Rebar (16mm - 32mm)",
+      type: "Reinforcement Steel",
+      spec: "BS 4449:2005 Grade B500B high-ductility ribbed rebar",
+      status: "In Use on Site",
+      activeWorkPackage: "Rebar cage pre-fabrication & shear link fixing on Level 5 deck",
+      quantity: "1,850 MT",
+      consumedQty: "1,220 MT",
+      percentConsumed: 66,
+      allocatedCost: 1.9,
+      incurredCost: 1.3,
+      supplier: "ArcelorMittal Industrial",
+      millCert: "MILL-AM-9941-B",
+      complianceStandard: "BS 4449 / CARES Approved Mill Certificate",
+      isLive: true,
+      lastDelivery: "Yesterday, 16:20 (Bundle lot #500B-44)",
+    },
+    {
+      id: "MAT-C103",
+      name: "S355JR Heavy Flange Structural Steel Columns & Girders",
+      type: "Structural Metals",
+      spec: "EN 10025-2 Grade S355JR fabricated box columns & transfer plate girders",
+      status: "In Use on Site",
+      activeWorkPackage: "Podium Transfer Floor Framing & Tower Core Splice Joints",
+      quantity: "920 MT",
+      consumedQty: "580 MT",
+      percentConsumed: 63,
+      allocatedCost: 2.1,
+      incurredCost: 1.4,
+      supplier: "Titan Concrete & Steel Solutions",
+      millCert: "EN10025-S355-667",
+      complianceStandard: "EN 1090-2 Execution Class EXC3",
+      isLive: true,
+      lastDelivery: "2 days ago (Flatbed delivery Lot 12)",
+    },
+    {
+      id: "MAT-C104",
+      name: "Double-Glazed Low-E Acoustic Curtain Wall Unitized Panels",
+      type: "Cladding & Glazing",
+      spec: "ASTM E283 / EN 12150-1 tempered acoustic laminated glass (U-value 1.1 W/m²K)",
+      status: "Staged on Site",
+      activeWorkPackage: "Tower B East Elevation Bracket Anchoring & Unitized Installation",
+      quantity: "4,500 m²",
+      consumedQty: "1,600 m²",
+      percentConsumed: 36,
+      allocatedCost: 1.6,
+      incurredCost: 0.8,
+      supplier: "Saint-Gobain Architectural Glass",
+      millCert: "SG-CW-BATCH-402",
+      complianceStandard: "CWCT Class 1 / EN 13501-1 Fire Class A2-s1,d0",
+      isLive: true,
+      lastDelivery: "3 days ago (Staged on L02 logistics staging bay)",
+    },
+    {
+      id: "MAT-C105",
+      name: "High-Flow Non-Shrink Cementitious Baseplate Grout",
+      type: "Chemicals & Grouts",
+      spec: "ASTM C1107 / CRD-C 621 Grade C dual-expansion precision grout",
+      status: "In Use on Site",
+      activeWorkPackage: "Tower column baseplate leveling & precast column pocket injection",
+      quantity: "65 MT",
+      consumedQty: "42 MT",
+      percentConsumed: 65,
+      allocatedCost: 0.22,
+      incurredCost: 0.15,
+      supplier: "Sika Construction Chemicals",
+      millCert: "SIKA-GROUT-902",
+      complianceStandard: "ASTM C1107 / ETA-15/0020",
+      isLive: true,
+      lastDelivery: "Yesterday, 11:30 AM (Pallet lot #SK-331)",
+    },
+  ],
+  Handover: [
+    {
+      id: "MAT-H01",
+      name: "Architectural Interior Acoustic Perforated Ceiling Panels",
+      type: "Finishes",
+      spec: "NRC 0.85 fire-rated mineral fiber ceiling system with concealed grid",
+      status: "Procured & Staged",
+      activeWorkPackage: "Lobby & main concourse acoustic finishes",
+      quantity: "3,800 m²",
+      consumedQty: "1,200 m²",
+      percentConsumed: 32,
+      allocatedCost: 0.45,
+      incurredCost: 0.18,
+      supplier: "Apex Interior Elements",
+      millCert: "CERT-ARM-118",
+      complianceStandard: "ASTM E84 Class A / EN 13964",
+    },
+    {
+      id: "MAT-H02",
+      name: "Intumescent Firestop Sealant & Pipe Penetration Collars",
+      type: "Life Safety Sealants",
+      spec: "UL 1479 / 2-hour and 4-hour fire endurance elastomeric sealants",
+      status: "In Use on Site",
+      activeWorkPackage: "MEP riser floor penetration compartmentation sealing",
+      quantity: "1,250 tubes & 380 collars",
+      consumedQty: "820 tubes",
+      percentConsumed: 65,
+      allocatedCost: 0.18,
+      incurredCost: 0.12,
+      supplier: "Hilti Fire Protection",
+      millCert: "HILTI-FS-401",
+      complianceStandard: "UL 1479 / BS 476 Part 20",
+    },
+  ],
+};
+
+export function getPhaseMaterials(project, phase) {
+  const materialsList = PHASE_MATERIALS[phase] || PHASE_MATERIALS.Construction;
+  return materialsList;
+}
 
 export function getPhaseExpenditures(project, phase) {
   const cost = project.costs?.find((c) => c.phase === phase) || { estimate: 0, actual: 0 };
@@ -997,17 +1267,11 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
   );
 }
 
-export function PhaseExpenseLedger({ expenditures, selectedPhase, selectedCategory, onSelectCategory }) {
+export function PhaseExpenseLedger({ project, expenditures, selectedPhase, selectedCategory, onSelectCategory }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedMaterialId, setExpandedMaterialId] = useState(null);
 
-  const categories = [
-    "All",
-    "Materials",
-    "Salaries & Labor",
-    "Subcontractors",
-    "Equipment & Plant",
-    "Permits & Fees",
-  ];
+  const phaseMaterials = getPhaseMaterials(project, selectedPhase);
 
   const filtered = expenditures.filter((item) => {
     const matchesCat = selectedCategory === "All" || item.category === selectedCategory;
@@ -1035,28 +1299,41 @@ export function PhaseExpenseLedger({ expenditures, selectedPhase, selectedCatego
       </div>
 
       <div className="ledger-controls">
-        <div className="ledger-filter-pills" role="tablist" aria-label="Filter expenses by category">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`ledger-pill ${selectedCategory === cat ? "active" : ""}`}
-              onClick={() => onSelectCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div className="ledger-search">
-          <MagnifyingGlass size={13} className="ledger-search-icon" aria-hidden="true" />
-          <input
-            type="search"
-            placeholder="Search scope, vendor, ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            aria-label="Filter expenses list"
-          />
+        <div className="ledger-search-container">
+          <label className="ledger-search-box">
+            <MagnifyingGlass size={15} className="ledger-search-icon" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Search expenses by scope, contractor, vendor, or voucher ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Filter expenses list"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                className="ledger-search-clear"
+                onClick={() => setSearchTerm("")}
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </label>
+          {selectedCategory !== "All" && (
+            <div className="ledger-active-category-pill">
+              <span>Category: <strong>{selectedCategory}</strong></span>
+              <button
+                type="button"
+                onClick={() => onSelectCategory("All")}
+                title="Clear category filter"
+                aria-label="Clear category filter"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1071,48 +1348,88 @@ export function PhaseExpenseLedger({ expenditures, selectedPhase, selectedCatego
               <th className="num">Actual spent</th>
               <th className="num">Variance</th>
               <th>Status</th>
+              <th style={{ width: "36px", padding: "10px 8px" }} aria-label="Details" />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: "center", padding: "32px", color: "var(--muted)" }}>
+                <td colSpan={8} style={{ textAlign: "center", padding: "32px", color: "var(--muted)" }}>
                   No expenditure records match the selected category or search filter.
                 </td>
               </tr>
             ) : (
               filtered.map((exp) => {
                 const catCfg = CATEGORY_CONFIG[exp.category] || { color: "#8d969d", lightColor: "rgba(141,150,157,0.15)" };
+                const isMaterialCat = exp.category === "Materials";
+                const isExpanded = expandedMaterialId === exp.id;
                 return (
-                  <tr key={exp.id}>
-                    <td>
-                      <strong style={{ color: "#f2f4f4" }}>{exp.title}</strong>
-                      <small style={{ fontFamily: '"IBM Plex Mono", monospace', color: "var(--muted)" }}>
-                        {exp.id}
-                      </small>
-                    </td>
-                    <td>
-                      <span
-                        className="category-badge"
-                        style={{
-                          background: catCfg.lightColor,
-                          color: catCfg.color,
-                          border: `1px solid ${catCfg.color}40`,
-                        }}
-                      >
-                        {exp.category}
-                      </span>
-                    </td>
-                    <td style={{ color: "#c8ced2" }}>{exp.vendor}</td>
-                    <td className="num">${exp.estimate}M</td>
-                    <td className="num">${exp.actual}M</td>
-                    <td className={`num ${exp.variance < 0 ? "negative" : "positive"}`}>
-                      {exp.variance >= 0 ? "+" : ""}${Math.abs(exp.variance).toFixed(1)}M
-                    </td>
-                    <td>
-                      <StatusTag status={exp.status} />
-                    </td>
-                  </tr>
+                  <React.Fragment key={exp.id}>
+                    <tr>
+                      <td>
+                        <strong style={{ color: "#f2f4f4" }}>{exp.title}</strong>
+                        <small style={{ fontFamily: '"IBM Plex Mono", monospace', color: "var(--muted)", display: "block", marginTop: "2px" }}>
+                          {exp.id}
+                        </small>
+                      </td>
+                      <td>
+                        <span
+                          className="category-badge"
+                          style={{
+                            background: catCfg.lightColor,
+                            color: catCfg.color,
+                            border: `1px solid ${catCfg.color}40`,
+                          }}
+                        >
+                          {exp.category}
+                        </span>
+                      </td>
+                      <td style={{ color: "#c8ced2" }}>{exp.vendor}</td>
+                      <td className="num">${exp.estimate}M</td>
+                      <td className="num">${exp.actual}M</td>
+                      <td className={`num ${exp.variance < 0 ? "negative" : "positive"}`}>
+                        {exp.variance >= 0 ? "+" : ""}${Math.abs(exp.variance).toFixed(1)}M
+                      </td>
+                      <td>
+                        <StatusTag status={exp.status} />
+                      </td>
+                      <td style={{ textAlign: "center", padding: "8px 6px" }}>
+                        {isMaterialCat && (
+                          <button
+                            type="button"
+                            className={`ledger-more-details-btn ${isExpanded ? "is-active" : ""}`}
+                            onClick={() => setExpandedMaterialId(isExpanded ? null : exp.id)}
+                            aria-expanded={isExpanded}
+                            title={isExpanded ? "Hide details" : "More details"}
+                            aria-label={isExpanded ? "Hide details" : "More details"}
+                          >
+                            <ChevronDown size={15} className="toggle-arrow" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {isMaterialCat && isExpanded && (
+                      <tr className="ledger-material-drawer-row">
+                        <td colSpan={8}>
+                          <div className="simple-materials-list-wrap">
+                            <span className="simple-materials-heading">Materials used:</span>
+                            <div className="simple-materials-items">
+                              {phaseMaterials.map((mat) => (
+                                <div key={mat.id} className="simple-material-row">
+                                  <span className="mat-dot" />
+                                  <span className="mat-name">{mat.name}</span>
+                                  <span className="mat-qty">· {mat.consumedQty} / {mat.quantity} ({mat.percentConsumed}%)</span>
+                                  <span className={`mat-status-tag ${mat.status.includes("In Use") ? "in-use" : "staged"}`}>
+                                    {mat.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })
             )}
@@ -1126,7 +1443,7 @@ export function PhaseExpenseLedger({ expenditures, selectedPhase, selectedCatego
                 <td className={`num ${totalVar < 0 ? "negative" : "positive"}`}>
                   {totalVar >= 0 ? "+" : ""}${Math.abs(totalVar).toFixed(1)}M
                 </td>
-                <td />
+                <td colSpan={2} />
               </tr>
             </tfoot>
           )}
@@ -1210,8 +1527,6 @@ export function CostAnalysisPage({
         </button>
       )}
 
-      {showOutlook && <CostOutlook project={project} />}
-
       <div className="phase-cost-hero">
         <div className="hero-titles">
           {!isEmbedded && (
@@ -1275,6 +1590,7 @@ export function CostAnalysisPage({
         />
 
         <PhaseExpenseLedger
+          project={project}
           expenditures={expenditures}
           selectedPhase={selectedPhase}
           selectedCategory={selectedCategory}
@@ -1286,3 +1602,4 @@ export function CostAnalysisPage({
 }
 
 export default CostAnalysisPage;
+
