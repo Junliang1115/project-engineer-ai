@@ -158,7 +158,6 @@ Each project should include:
 - Work plan
 - Milestones
 - Budget and cost tracking
-- Workforce plan and skill mix
 - Material delivery status
 - Risk register
 - Lesson register

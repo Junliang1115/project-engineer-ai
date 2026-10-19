@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import LessonsPage from "./LessonRegister.jsx";
+import LessonRegister from "./LessonRegister.jsx";
+import { fetchProjects } from "./api.js";
 import {
   AlertTriangle,
   BookOpen,
@@ -147,6 +148,10 @@ const conversationTopics = [
 function ChatPage() {
   const [activeView, setActiveView] = useState("chat");
   const [projects] = useState(conversationProjects);
+  const [liveProjects, setLiveProjects] = useState([]);
+  useEffect(() => {
+    fetchProjects().then(setLiveProjects).catch(() => {});
+  }, []);
   const [topics, setTopics] = useState(conversationTopics);
   const [selectedTopicId, setSelectedTopicId] = useState(conversationTopics[0].id);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -270,7 +275,7 @@ function ChatPage() {
         onRenameTopic={handleRenameTopic}
       />
       <div className="chat-main-area">
-        {activeView === "lessons" ? <LessonsPage topics={topics} projects={projects} messagesByTopic={messagesByTopic} sidebarOpen={isSidebarOpen} onExpandSidebar={() => setIsSidebarOpen(true)} onOpenChat={(id) => { setSelectedTopicId(id); setActiveView("chat"); }} /> : <>
+        {activeView === "lessons" ? <LessonRegister topics={topics} projects={liveProjects.length > 0 ? liveProjects : projects} messagesByTopic={messagesByTopic} sidebarOpen={isSidebarOpen} onExpandSidebar={() => setIsSidebarOpen(true)} onOpenChat={(id) => { setSelectedTopicId(id); setActiveView("chat"); }} /> : <>
           <header className="chat-top-header" aria-label="Conversation header">
             <div className="chat-header-copy">
               {!isSidebarOpen && (

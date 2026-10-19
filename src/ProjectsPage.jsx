@@ -1,17 +1,53 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   AlertTriangle as Warning,
   ArrowLeft,
   ClipboardList as ClipboardText,
+  RotateCcw,
 } from "lucide-react";
 import { fetchProjects, fetchProjectsMeta, triggerScanUpdates } from "./api.js";
-import { Tag, Button, StatusTag, Progress, resolveProjectId, projectAliases } from "./ProjectTokens.jsx";
+import { Tag, StatusTag } from "./components/Tag.jsx";
+import { Button } from "./components/Button.jsx";
+import { Progress } from "./components/Progress.jsx";
+import { filterActivitiesByDate } from "./activityLog.js";
+
+export const phases = [
+  'Concept',
+  'Feasibility',
+  'Design',
+  'Procurement',
+  'Construction',
+  'Handover',
+];
+
+export const phaseIndex = (phase) => phases.indexOf(phase);
+
+export const projectAliases = {
+  "PRJ-2401": "PRJ-01",
+};
+
+export function resolveProjectId(id) {
+  return projectAliases[id] || id;
+}
+
+export const money = (value, compact = false) =>
+  compact
+    ? `$${value.toFixed(value % 1 ? 1 : 0)}M`
+    : new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(value);
+
 import ProjectSidebar from "./ProjectSidebar.jsx";
 import ProjectOverview, { AttentionControls } from "./ProjectOverview.jsx";
-import ChangeOrderControls from "./ChangeOrderSection.jsx";
 import RiskControls from "./RiskSection.jsx";
-import TechnicalQueriesSection from "./TechnicalQueriesSection.jsx";
-import Rail from "./Rail.jsx";
+import RequestSection from "./RequestSection.jsx";
+import RequestDetailPage from "./RequestDetailPage.jsx";
+import LessonRegister, { LESSON_TABLE_COLUMNS } from "./LessonRegister.jsx";
+import ActivityLog from "./ActivityLog.jsx";
+import "./LessonsPage.css";
+import "./ActivityLog.css";
 import {
   CostChart,
   CostOutlook,
@@ -30,6 +66,10 @@ import MilestoneSection, {
 
 // Re-exports for modular backwards-compatibility
 export {
+  Tag,
+  StatusTag,
+  Button,
+  Progress,
   CostChart,
   CostAnalysisPage,
   getPhaseExpenditures,
@@ -38,101 +78,17 @@ export {
   TaskTable,
   TaskLog,
   getTaskLog,
-  Rail,
   ProjectsList,
   LoadingState,
-  resolveProjectId,
-  projectAliases,
   ProjectOverview,
-  ChangeOrderControls,
+  RequestSection,
   RiskControls,
   CostOutlook,
   AttentionControls,
+  ActivityLog,
 };
 
-
-export function ActivityLog({ project }) {
-  const activities = project.activities || [];
-
-  return (
-    <section className="panel activity-log-panel">
-      <div className="section-head">
-        <div>
-          <h2>Activity log</h2>
-          <p>Incoming emails, messages, reports, and queries linked to this project.</p>
-        </div>
-        <span>{activities.length} sources</span>
-      </div>
-      <div className="activity-log-list">
-        {activities.map((activity) => (
-          <article key={activity.id}>
-            <div className="activity-log-main">
-              <span className="activity-type">{activity.type}</span>
-              <div>
-                <strong>{activity.summary}</strong>
-                <small>
-                  {activity.source} / {activity.from} / {activity.received}
-                </small>
-              </div>
-            </div>
-            <div className="activity-log-meta">
-              <span>{activity.relatedTo}</span>
-              <p>{activity.action}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function Issues({ issues }) {
-  return (
-    <section className="panel issues-panel">
-      <div className="section-head">
-        <div>
-          <h2>Issues and lessons learned</h2>
-          <p>Open constraints and retained delivery knowledge.</p>
-        </div>
-        <ClipboardText size={22} />
-      </div>
-      <div className="issue-list">
-        {issues.map((issue) => (
-          <article key={issue.id}>
-            <div className="issue-main">
-              <span className="issue-icon">
-                <Warning size={18} />
-              </span>
-              <div>
-                <strong>{issue.description}</strong>
-                <span>
-                  {issue.id} / Related task {issue.related_task_id}
-                </span>
-              </div>
-            </div>
-            <div className="issue-tags">
-              <Tag
-                type={
-                  issue.severity === "High"
-                    ? "red"
-                    : issue.severity === "Learning"
-                      ? "blue"
-                      : "warm-gray"
-                }
-                size="sm"
-              >
-                {issue.severity}
-              </Tag>
-              <StatusTag status={issue.status} />
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
+export function ProjectDetail({ project, onBack, onOpenCostAnalysis, onSelectRequest }) {
   const [costPhase, setCostPhase] = useState(project.phase || "Construction");
 
   const handleExploreMore = (phase) => {
@@ -149,29 +105,19 @@ export function ProjectDetail({ project, onBack, onOpenCostAnalysis }) {
       onBack={onBack}
       sections={{
         overview: <ProjectOverview project={project} onExploreMore={handleExploreMore} />,
-
         milestones: <MilestoneSection project={project} />,
         costs: (
           <>
-            <h1>Cost tracking</h1>
+            <div className="section-page-header">
+              <h1>Cost tracking</h1>
+            </div>
             <CostAnalysisPage project={project} initialPhase={costPhase} isEmbedded={true} />
           </>
         ),
-        deliveries: (
-          <>
-            <h1>Change orders</h1>
-            <ChangeOrderControls project={project} />
-          </>
-        ),
-        risks: (
-          <>
-            <h1>Risks</h1>
-            <RiskControls project={project} />
-          </>
-        ),
-        queries: <TechnicalQueriesSection project={project} />,
+        requests: <RequestSection project={project} onSelectRequest={onSelectRequest} />,
+        risks: <RiskControls project={project} />,
         activity: <ActivityLog project={project} />,
-        issues: <Issues issues={project.issues} />,
+        lessons: <LessonRegister project={project} />,
       }}
     />
   );
@@ -200,6 +146,11 @@ export default function ProjectsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
     const match = window.location.pathname.match(/\/projects\/([a-zA-Z0-9_-]+)/);
     return match ? match[1] : null;
+  });
+
+  const [selectedRequestId, setSelectedRequestId] = useState(() => {
+    const reqMatch = window.location.pathname.match(/\/projects\/[a-zA-Z0-9_-]+\/requests\/([a-zA-Z0-9_-]+)/);
+    return reqMatch ? reqMatch[1] : null;
   });
 
   const [costAnalysisPhase, setCostAnalysisPhase] = useState(() => {
@@ -268,12 +219,14 @@ export default function ProjectsPage() {
   const handleSelectProject = (id) => {
     setSelectedProjectId(id);
     setCostAnalysisPhase(null);
+    setSelectedRequestId(null);
     window.history.pushState(null, "", `/projects/${id}`);
   };
 
   const handleBackToProjects = () => {
     setSelectedProjectId(null);
     setCostAnalysisPhase(null);
+    setSelectedRequestId(null);
     window.history.pushState(null, "", "/projects");
   };
 
@@ -292,6 +245,20 @@ export default function ProjectsPage() {
     window.history.pushState(null, "", `/projects/${selectedProjectId}#costs`);
   };
 
+  const handleSelectRequest = (requestId) => {
+    setSelectedRequestId(requestId);
+    window.history.pushState(null, "", `/projects/${selectedProjectId}/requests/${requestId}`);
+  };
+
+  const handleBackToRequests = () => {
+    setSelectedRequestId(null);
+    window.history.pushState(null, "", `/projects/${selectedProjectId}`);
+    setTimeout(() => {
+      window.location.hash = "requests";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }, 0);
+  };
+
   let content;
   if (isLoadingProjects) {
     content = <LoadingState />;
@@ -305,7 +272,8 @@ export default function ProjectsPage() {
       </main>
     );
   } else if (selectedProjectId) {
-    const project = projects.find((p) => p.id === selectedProjectId || p.id === resolveProjectId(selectedProjectId));
+    const projectRecord = projects.find((p) => p.id === selectedProjectId || p.id === resolveProjectId(selectedProjectId));
+    const project = projectRecord ? { ...projectRecord, latestRefresh: lastUpdated } : null;
     if (!project) {
       content = <NotFound onBack={handleBackToProjects} />;
     } else if (costAnalysisPhase) {
@@ -316,12 +284,20 @@ export default function ProjectsPage() {
           onBack={handleBackToProjectDetail}
         />
       );
+    } else if (selectedRequestId) {
+      const detailRequest = (project.requests || []).find((r) => r.id === selectedRequestId);
+      content = detailRequest ? (
+        <RequestDetailPage request={detailRequest} onBack={handleBackToRequests} />
+      ) : (
+        <NotFound onBack={handleBackToProjects} />
+      );
     } else {
       content = (
         <ProjectDetail
           project={project}
           onBack={handleBackToProjects}
           onOpenCostAnalysis={handleOpenCostAnalysis}
+          onSelectRequest={handleSelectRequest}
         />
       );
     }

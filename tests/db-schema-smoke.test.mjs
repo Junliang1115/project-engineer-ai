@@ -20,12 +20,22 @@ const readme = readFileSync(new URL("../backend/db/README.md", import.meta.url),
   assert.match(seed, new RegExp(`insert into\\s+${table}\\b`, "i"));
 });
 
+assert.match(schema, /create table if not exists expenditure\b/i);
+assert.match(seed, /insert into\s+expenditure\b/i);
+assert.equal((seed.match(/'EXP-[CFDPH]\d{2}'/g) || []).length, 30);
+assert.doesNotMatch(schema.match(/create table if not exists expenditure[\s\S]*?\);/i)?.[0] || "", /\bcurrency\b/i);
+
 assert.doesNotMatch(schema, /\bcreate table if not exists workforce\b/i);
 assert.doesNotMatch(schema, /\bcreate table if not exists workforce_requirement\b/i);
 assert.doesNotMatch(seed, /\binsert into\s+workforce\b/i);
 assert.doesNotMatch(seed, /\binsert into\s+workforce_requirement\b/i);
 
 assert.match(schema, /\bimpact text not null default 'medium'/i);
+assert.match(schema, /affected_areas text\[\] not null default/i);
+assert.match(schema, /priority text not null default 'medium'/i);
+assert.match(schema, /status text not null default 'forecast' check \(status in \('forecast', 'committed', 'incurred', 'invoiced', 'paid', 'cancelled'\)\)/i);
+assert.match(schema, /expenditure_date date not null default current_date/i);
+assert.match(schema, /create index if not exists idx_expenditure_project_phase/i);
 assert.doesNotMatch(schema, /\bseverity\b/i);
 assert.doesNotMatch(schema, /\bprobability\b/i);
 assert.doesNotMatch(schema, /,\s*\)/);

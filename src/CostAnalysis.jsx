@@ -1,618 +1,104 @@
 import React, { useState, useEffect } from "react";
-import { Forward, ArrowLeft, Search as MagnifyingGlass, ChevronDown, X } from "lucide-react";
-import { phases } from "./data.js";
-import { Tag, StatusTag } from "./ProjectTokens.jsx";
-import { Source } from "./components/Source.jsx";
+import { Forward, ArrowLeft, ChevronDown } from "lucide-react";
+import { Tag, StatusTag } from "./components/Tag.jsx";
+
+const phases = [
+  "Concept",
+  "Feasibility",
+  "Design",
+  "Procurement",
+  "Construction",
+  "Handover",
+];
+import { DetailPanel } from "./components/DetailPanel.jsx";
+import { FilterBar, FilterSelect } from "./components/FilterBar.jsx";
 import "./ProjectOverview.css";
 
 const usdMillions = (value) => `$${value.toFixed(1)}M`;
 
+export const CHART_COLORS = [
+  "#3A9CC4",
+  "#F59E0B",
+  "#3FB97A",
+  "#9B8CF0",
+  "#E36D8A",
+  "#8FA3B0",
+];
+
 export const CATEGORY_CONFIG = {
   Materials: {
     label: "Materials",
-    color: "#3b82f6",
-    lightColor: "rgba(59, 130, 246, 0.15)",
+    color: "#3A9CC4",
+    lightColor: "rgba(58, 156, 196, 0.15)",
   },
   "Salaries & Labor": {
     label: "Salaries & Labor",
-    color: "#10b981",
-    lightColor: "rgba(16, 185, 129, 0.15)",
+    color: "#3FB97A",
+    lightColor: "rgba(63, 185, 122, 0.15)",
   },
   Subcontractors: {
     label: "Subcontractors",
-    color: "#8b5cf6",
-    lightColor: "rgba(139, 92, 246, 0.15)",
+    color: "#9B8CF0",
+    lightColor: "rgba(155, 140, 240, 0.15)",
   },
   "Equipment & Plant": {
     label: "Equipment & Plant",
-    color: "#f59e0b",
+    color: "#F59E0B",
     lightColor: "rgba(245, 158, 11, 0.15)",
   },
   "Permits & Fees": {
     label: "Permits & Fees",
-    color: "#06b6d4",
-    lightColor: "rgba(6, 182, 212, 0.15)",
+    color: "#E36D8A",
+    lightColor: "rgba(227, 109, 138, 0.15)",
   },
 };
 
-export const PHASE_MATERIALS = {
-  Concept: [
-    {
-      id: "MAT-C01",
-      name: "Architectural 3D Scale Models & High-Density Foam",
-      type: "Modeling & Prototype",
-      spec: "1:200 Scale / High-Density Polyurethane & Laser-cut Acrylic",
-      status: "In Use on Site",
-      activeWorkPackage: "Concept massing & stakeholder design reviews",
-      quantity: "14 assemblies",
-      consumedQty: "14 assemblies",
-      percentConsumed: 100,
-      allocatedCost: 0.12,
-      incurredCost: 0.12,
-      supplier: "KPF Design Partners",
-      millCert: "CERT-MOD-882",
-      complianceStandard: "ISO 9001 / Client Milestone Review",
-    },
-    {
-      id: "MAT-C02",
-      name: "Topographical Survey Targets & Field Consumables",
-      type: "Geospatial Materials",
-      spec: "LIDAR reflective prisms & GPS geodetic benchmark stakes",
-      status: "In Use on Site",
-      activeWorkPackage: "Utility boundary survey & site grid alignment",
-      quantity: "85 units",
-      consumedQty: "85 units",
-      percentConsumed: 100,
-      allocatedCost: 0.08,
-      incurredCost: 0.08,
-      supplier: "Apex Geospatial Ltd",
-      millCert: "GEO-SURV-102",
-      complianceStandard: "RICS Guidance / Ordinance Survey datum",
-    },
-  ],
-  Feasibility: [
-    {
-      id: "MAT-F01",
-      name: "Bentonite Drilling Slurry (Sodium Montmorillonite)",
-      type: "Geotechnical Slurry",
-      spec: "API Spec 13A Section 9 / High-viscosity drilling grade",
-      status: "Completed / Stabilized",
-      activeWorkPackage: "Exploratory boreholes BH-01 to BH-08 stabilization",
-      quantity: "340 MT",
-      consumedQty: "340 MT",
-      percentConsumed: 100,
-      allocatedCost: 0.28,
-      incurredCost: 0.28,
-      supplier: "GeoSupply Industrial",
-      millCert: "QC-BEN-771",
-      complianceStandard: "API Spec 13A / ASTM D5890",
-    },
-    {
-      id: "MAT-F02",
-      name: "Borehole Steel Temporary Casings (150mm & 200mm)",
-      type: "Core Casings",
-      spec: "ASTM A53 Grade B seamless carbon steel casing",
-      status: "Completed / Stabilized",
-      activeWorkPackage: "Soil stratification & groundwater core sampling",
-      quantity: "420 m",
-      consumedQty: "420 m",
-      percentConsumed: 100,
-      allocatedCost: 0.22,
-      incurredCost: 0.22,
-      supplier: "Civic Ground Engineering",
-      millCert: "CAS-CS-202",
-      complianceStandard: "BS EN 1997-2 / Eurocode 7 Geotech",
-    },
-  ],
-  Design: [
-    {
-      id: "MAT-D01",
-      name: "Double-Glazed Acoustic Cladding Test Specimen",
-      type: "Facade Mockup",
-      spec: "Low-E Acoustic Laminated / U-value 1.1 W/m²K, Rw 42dB",
-      status: "Testing In Progress",
-      activeWorkPackage: "Acoustic laboratory sound transmission & thermal cycling test",
-      quantity: "120 m²",
-      consumedQty: "120 m²",
-      percentConsumed: 100,
-      allocatedCost: 0.35,
-      incurredCost: 0.35,
-      supplier: "Saint-Gobain Architectural",
-      millCert: "LAB-SG-4410",
-      complianceStandard: "ASTM E283 / EN 12150-1 / CWCT Standard",
-    },
-    {
-      id: "MAT-D02",
-      name: "Thermal Break Aluminum Mullion Sections (6063-T6)",
-      type: "Facade Framing",
-      spec: "Polyamide thermal strut insulated extruded profiles",
-      status: "Specification Approved",
-      activeWorkPackage: "Wind tunnel boundary-layer deflection modeling",
-      quantity: "650 m",
-      consumedQty: "480 m",
-      percentConsumed: 74,
-      allocatedCost: 0.28,
-      incurredCost: 0.28,
-      supplier: "Schüco International",
-      millCert: "CERT-AL-902",
-      complianceStandard: "EN 755-9 / BS EN 12020",
-    },
-  ],
-  Procurement: [
-    {
-      id: "MAT-P01",
-      name: "Structural Heavy Steel Sections (Grade S355JR)",
-      type: "Structural Metals",
-      spec: "EN 10025-2 hot-rolled wide-flange beams & column sections",
-      status: "Procured & Staged at Port",
-      activeWorkPackage: "Primary superstructure column & transfer truss package",
-      quantity: "2,400 MT",
-      consumedQty: "1,450 MT",
-      percentConsumed: 60,
-      allocatedCost: 2.8,
-      incurredCost: 2.1,
-      supplier: "ArcelorMittal Industrial",
-      millCert: "MILL-AM-88301",
-      complianceStandard: "EN 10025-2 / CE & UKCA Certified",
-    },
-    {
-      id: "MAT-P02",
-      name: "High-Yield Deformed Rebar Steel (Grade B500B)",
-      type: "Reinforcement Steel",
-      spec: "BS 4449:2005 Grade B500B high ductility ribbed bars",
-      status: "Procured & Batch Tested",
-      activeWorkPackage: "Foundation mat, pile caps & core shear walls",
-      quantity: "3,200 MT",
-      consumedQty: "2,100 MT",
-      percentConsumed: 66,
-      allocatedCost: 2.4,
-      incurredCost: 1.8,
-      supplier: "ArcelorMittal Industrial",
-      millCert: "CARES-CERT-7731",
-      complianceStandard: "BS 4449 / CARES Approved",
-    },
-  ],
-  Construction: [
-    {
-      id: "MAT-C101",
-      name: "C50/60 High-Strength Ready-Mix Concrete",
-      type: "Concrete & Mixes",
-      spec: "BS EN 206-1 / 50 MPa characteristic strength, low heat CEM III/A",
-      status: "In Use on Site",
-      activeWorkPackage: "Suspended Floor Slabs L04-L06 & Core Shear Walls (Task TSK-01)",
-      quantity: "14,800 m³",
-      consumedQty: "9,450 m³",
-      percentConsumed: 64,
-      allocatedCost: 2.4,
-      incurredCost: 1.8,
-      supplier: "Titan Concrete & Steel Solutions",
-      millCert: "BATCH-TC-2026-088",
-      complianceStandard: "BS EN 206-1 / ISO 9001 / Batch QA Pass",
-      isLive: true,
-      lastDelivery: "Today, 07:45 AM (8 mixer trucks dispatched)",
-    },
-    {
-      id: "MAT-C102",
-      name: "Grade 500B High-Yield Deformed Rebar (16mm - 32mm)",
-      type: "Reinforcement Steel",
-      spec: "BS 4449:2005 Grade B500B high-ductility ribbed rebar",
-      status: "In Use on Site",
-      activeWorkPackage: "Rebar cage pre-fabrication & shear link fixing on Level 5 deck",
-      quantity: "1,850 MT",
-      consumedQty: "1,220 MT",
-      percentConsumed: 66,
-      allocatedCost: 1.9,
-      incurredCost: 1.3,
-      supplier: "ArcelorMittal Industrial",
-      millCert: "MILL-AM-9941-B",
-      complianceStandard: "BS 4449 / CARES Approved Mill Certificate",
-      isLive: true,
-      lastDelivery: "Yesterday, 16:20 (Bundle lot #500B-44)",
-    },
-    {
-      id: "MAT-C103",
-      name: "S355JR Heavy Flange Structural Steel Columns & Girders",
-      type: "Structural Metals",
-      spec: "EN 10025-2 Grade S355JR fabricated box columns & transfer plate girders",
-      status: "In Use on Site",
-      activeWorkPackage: "Podium Transfer Floor Framing & Tower Core Splice Joints",
-      quantity: "920 MT",
-      consumedQty: "580 MT",
-      percentConsumed: 63,
-      allocatedCost: 2.1,
-      incurredCost: 1.4,
-      supplier: "Titan Concrete & Steel Solutions",
-      millCert: "EN10025-S355-667",
-      complianceStandard: "EN 1090-2 Execution Class EXC3",
-      isLive: true,
-      lastDelivery: "2 days ago (Flatbed delivery Lot 12)",
-    },
-    {
-      id: "MAT-C104",
-      name: "Double-Glazed Low-E Acoustic Curtain Wall Unitized Panels",
-      type: "Cladding & Glazing",
-      spec: "ASTM E283 / EN 12150-1 tempered acoustic laminated glass (U-value 1.1 W/m²K)",
-      status: "Staged on Site",
-      activeWorkPackage: "Tower B East Elevation Bracket Anchoring & Unitized Installation",
-      quantity: "4,500 m²",
-      consumedQty: "1,600 m²",
-      percentConsumed: 36,
-      allocatedCost: 1.6,
-      incurredCost: 0.8,
-      supplier: "Saint-Gobain Architectural Glass",
-      millCert: "SG-CW-BATCH-402",
-      complianceStandard: "CWCT Class 1 / EN 13501-1 Fire Class A2-s1,d0",
-      isLive: true,
-      lastDelivery: "3 days ago (Staged on L02 logistics staging bay)",
-    },
-    {
-      id: "MAT-C105",
-      name: "High-Flow Non-Shrink Cementitious Baseplate Grout",
-      type: "Chemicals & Grouts",
-      spec: "ASTM C1107 / CRD-C 621 Grade C dual-expansion precision grout",
-      status: "In Use on Site",
-      activeWorkPackage: "Tower column baseplate leveling & precast column pocket injection",
-      quantity: "65 MT",
-      consumedQty: "42 MT",
-      percentConsumed: 65,
-      allocatedCost: 0.22,
-      incurredCost: 0.15,
-      supplier: "Sika Construction Chemicals",
-      millCert: "SIKA-GROUT-902",
-      complianceStandard: "ASTM C1107 / ETA-15/0020",
-      isLive: true,
-      lastDelivery: "Yesterday, 11:30 AM (Pallet lot #SK-331)",
-    },
-  ],
-  Handover: [
-    {
-      id: "MAT-H01",
-      name: "Architectural Interior Acoustic Perforated Ceiling Panels",
-      type: "Finishes",
-      spec: "NRC 0.85 fire-rated mineral fiber ceiling system with concealed grid",
-      status: "Procured & Staged",
-      activeWorkPackage: "Lobby & main concourse acoustic finishes",
-      quantity: "3,800 m²",
-      consumedQty: "1,200 m²",
-      percentConsumed: 32,
-      allocatedCost: 0.45,
-      incurredCost: 0.18,
-      supplier: "Apex Interior Elements",
-      millCert: "CERT-ARM-118",
-      complianceStandard: "ASTM E84 Class A / EN 13964",
-    },
-    {
-      id: "MAT-H02",
-      name: "Intumescent Firestop Sealant & Pipe Penetration Collars",
-      type: "Life Safety Sealants",
-      spec: "UL 1479 / 2-hour and 4-hour fire endurance elastomeric sealants",
-      status: "In Use on Site",
-      activeWorkPackage: "MEP riser floor penetration compartmentation sealing",
-      quantity: "1,250 tubes & 380 collars",
-      consumedQty: "820 tubes",
-      percentConsumed: 65,
-      allocatedCost: 0.18,
-      incurredCost: 0.12,
-      supplier: "Hilti Fire Protection",
-      millCert: "HILTI-FS-401",
-      complianceStandard: "UL 1479 / BS 476 Part 20",
-    },
-  ],
-};
-
-export const DEFAULT_PHASE_COSTS = [
-  { phase: "Concept", estimate: 8.0, actual: 7.8 },
-  { phase: "Feasibility", estimate: 14.0, actual: 14.2 },
-  { phase: "Design", estimate: 24.0, actual: 26.5 },
-  { phase: "Procurement", estimate: 42.0, actual: 44.1 },
-  { phase: "Construction", estimate: 43.2, actual: 36.8 },
-  { phase: "Handover", estimate: 8.0, actual: 2.4 },
-];
-
 export function getProjectPhaseCosts(project) {
-  const existing = project?.costs || [];
-  return phases.map((phaseName) => {
-    const found = existing.find(
-      (c) => c.phase && c.phase.toLowerCase() === phaseName.toLowerCase()
-    );
-    const fallback = DEFAULT_PHASE_COSTS.find((d) => d.phase === phaseName) || {
-      phase: phaseName,
-      estimate: 10,
-      actual: 8,
-    };
-    if (found && (found.estimate > 0 || found.actual > 0)) {
+  const existing = Array.isArray(project?.costs) ? project.costs : [];
+  if (existing.length > 0) {
+    return phases.map((phaseName) => {
+      const found = existing.find(
+        (c) => c.phase && c.phase.toLowerCase() === phaseName.toLowerCase(),
+      );
       return {
         phase: phaseName,
-        estimate: found.estimate,
-        actual: found.actual,
+        estimate: Number(found?.estimate || 0),
+        actual: Number(found?.actual || 0),
       };
-    }
-    return fallback;
-  });
-}
+    });
+  }
 
-export function getPhaseMaterials(project, phase) {
-  const materialsList = PHASE_MATERIALS[phase] || PHASE_MATERIALS.Construction;
-  return materialsList;
+  // Derive from project.expenditures if costs array is not precomputed
+  const expenditures = Array.isArray(project?.expenditures)
+    ? project.expenditures
+    : [];
+  return phases.map((phaseName) => {
+    const phaseExp = expenditures.filter(
+      (e) => String(e.phase || "").toLowerCase() === phaseName.toLowerCase(),
+    );
+    const estimate =
+      Math.round(phaseExp.reduce((s, e) => s + (e.estimate || 0), 0) * 10) / 10;
+    const actual =
+      Math.round(phaseExp.reduce((s, e) => s + (e.actual || 0), 0) * 10) / 10;
+    return {
+      phase: phaseName,
+      estimate,
+      actual,
+    };
+  });
 }
 
 export function getPhaseExpenditures(project, phase) {
-  const costs = getProjectPhaseCosts(project);
-  const cost = costs.find((c) => c.phase === phase) || { estimate: 0, actual: 0 };
-  const est = cost.estimate || 0;
-  const act = cost.actual || 0;
+  const expenditures = Array.isArray(project?.expenditures)
+    ? project.expenditures
+    : [];
+  const selectedPhase = String(phase || "").toLowerCase();
 
-  const templates = {
-    Concept: [
-      {
-        id: "EXP-C01",
-        title: "Topographical LIDAR scans & utility mapping",
-        category: "Subcontractors",
-        vendor: "Apex Geospatial Ltd",
-        share: 0.22,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C02",
-        title: "Concept architectural massing & 3D scale models",
-        category: "Materials",
-        vendor: "KPF Design Partners",
-        share: 0.15,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C03",
-        title: "Lead design architects & structural directors payroll",
-        category: "Salaries & Labor",
-        vendor: "In-house Core Engineering",
-        share: 0.32,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C04",
-        title: "Geotechnical testing rig & mobile sonic sounders lease",
-        category: "Equipment & Plant",
-        vendor: "Geotech Instruments Corp",
-        share: 0.16,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C05",
-        title: "Municipal zoning appraisal & pre-planning permit fees",
-        category: "Permits & Fees",
-        vendor: "City Development Authority",
-        share: 0.15,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-    ],
-    Feasibility: [
-      {
-        id: "EXP-F01",
-        title: "Borehole exploratory drilling & geotechnical core sampling",
-        category: "Subcontractors",
-        vendor: "Civic Ground Engineering",
-        share: 0.26,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-F02",
-        title: "Core sample casings, bentonite slurry & field consumables",
-        category: "Materials",
-        vendor: "GeoSupply Industrial",
-        share: 0.14,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-F03",
-        title: "Senior geotechnical analysts & cost QS team salaries",
-        category: "Salaries & Labor",
-        vendor: "In-house Project Controls",
-        share: 0.28,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-F04",
-        title: "Hydraulic rotary drill rig & soil press equipment rental",
-        category: "Equipment & Plant",
-        vendor: "HeavyHire International",
-        share: 0.18,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-F05",
-        title: "Environmental impact statutory filing & planning clearances",
-        category: "Permits & Fees",
-        vendor: "Metropolitan Planning Bureau",
-        share: 0.14,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-    ],
-    Design: [
-      {
-        id: "EXP-D01",
-        title: "Acoustic mockups, thermal glass & cladding test specimens",
-        category: "Materials",
-        vendor: "Saint-Gobain Architectural",
-        share: 0.18,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-D02",
-        title: "BIM coordinators, structural engineers & MEP staff payroll",
-        category: "Salaries & Labor",
-        vendor: "Foster & Partners Engineering",
-        share: 0.34,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-D03",
-        title: "Specialist boundary-layer wind tunnel testing contract",
-        category: "Subcontractors",
-        vendor: "RWDI Wind Engineers",
-        share: 0.24,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-D04",
-        title: "High-spec BIM modeling workstations & 3D scanner rentals",
-        category: "Equipment & Plant",
-        vendor: "TechLease Infrastructure",
-        share: 0.12,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-D05",
-        title: "Professional Engineer (PE) stamp certifications & building licenses",
-        category: "Permits & Fees",
-        vendor: "State Board of Engineers & City Licensing",
-        share: 0.12,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-    ],
-    Procurement: [
-      {
-        id: "EXP-P01",
-        title: "Structural steel mill order & rebar reinforcement supply",
-        category: "Materials",
-        vendor: "ArcelorMittal Industrial",
-        share: 0.46,
-        status: act > 0 ? "Incurred" : "Committed",
-      },
-      {
-        id: "EXP-P02",
-        title: "Procurement buyers, supply chain expeditors & QA payroll",
-        category: "Salaries & Labor",
-        vendor: "Global Sourcing Team",
-        share: 0.18,
-        status: act > 0 ? "Incurred" : "Committed",
-      },
-      {
-        id: "EXP-P03",
-        title: "International freight logistics forwarding & stevedoring",
-        category: "Subcontractors",
-        vendor: "Maersk Global Logistics",
-        share: 0.16,
-        status: act > 0 ? "Incurred" : "Committed",
-      },
-      {
-        id: "EXP-P04",
-        title: "Dockside gantry cranes & heavy flatbed transporter leasing",
-        category: "Equipment & Plant",
-        vendor: "Port Equipment Services",
-        share: 0.12,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-P05",
-        title: "Customs import duty tariffs & marine cargo insurance bonds",
-        category: "Permits & Fees",
-        vendor: "Customs Bureau & Lloyd's Syndicate",
-        share: 0.08,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-    ],
-    Construction: [
-      {
-        id: "EXP-C10",
-        title: "High-strength C50 ready-mix concrete, rebar & structural steel",
-        category: "Materials",
-        vendor: "Titan Concrete & Steel Solutions",
-        share: 0.38,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C11",
-        title: "Site superintendents, safety engineers & trade crews payroll",
-        category: "Salaries & Labor",
-        vendor: "Direct Site Operations Payroll",
-        share: 0.22,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C12",
-        title: "Deep substructure excavation & diaphragm wall trade contract",
-        category: "Subcontractors",
-        vendor: "Keller Foundation Systems",
-        share: 0.20,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C13",
-        title: "Twin luffing-jib tower cranes & concrete boom pumps rental",
-        category: "Equipment & Plant",
-        vendor: "Select Plant Hire Ltd",
-        share: 0.14,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-C14",
-        title: "Municipal street closure, heavy-haul permits & environmental monitoring",
-        category: "Permits & Fees",
-        vendor: "Department of Transportation & EPA",
-        share: 0.06,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-    ],
-    Handover: [
-      {
-        id: "EXP-H01",
-        title: "Final architectural touch-up finishes, hardware & wayfinding signs",
-        category: "Materials",
-        vendor: "Apex Interior Elements",
-        share: 0.15,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-H02",
-        title: "Closeout managers, QA/QC punchlist engineers & facilities team salaries",
-        category: "Salaries & Labor",
-        vendor: "Project Handover Management",
-        share: 0.25,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-H03",
-        title: "Testing, Adjusting & Balancing (TAB) mechanical commissioning",
-        category: "Subcontractors",
-        vendor: "National Commissioning Bureau",
-        share: 0.32,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-H04",
-        title: "Thermal imaging cameras, airflow meters & load bank rentals",
-        category: "Equipment & Plant",
-        vendor: "Instrument Hire Co",
-        share: 0.14,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-      {
-        id: "EXP-H05",
-        title: "Certificate of Occupancy (CO) statutory approvals & fire marshal stamps",
-        category: "Permits & Fees",
-        vendor: "Bureau Veritas & Municipal Fire Dept",
-        share: 0.14,
-        status: act > 0 ? "Incurred" : "Forecast",
-      },
-    ],
-  };
-
-  const list = templates[phase] || templates.Construction;
-
-  return list.map((item) => {
-    const itemEst = Math.round(est * item.share * 10) / 10;
-    const itemAct = act > 0 ? Math.round(act * item.share * 10) / 10 : 0;
-    const variance = Math.round((itemEst - itemAct) * 10) / 10;
-
-    return {
-      ...item,
-      estimate: itemEst,
-      actual: itemAct,
-      variance,
-    };
-  });
+  return expenditures.filter(
+    (expenditure) =>
+      String(expenditure?.phase || "").toLowerCase() === selectedPhase,
+  );
 }
-
 export function getPhaseCategoryBreakdown(expenditures) {
   const categories = [
     "Materials",
@@ -621,17 +107,30 @@ export function getPhaseCategoryBreakdown(expenditures) {
     "Equipment & Plant",
     "Permits & Fees",
   ];
-  const totalActual = expenditures.reduce((sum, item) => sum + (item.actual || 0), 0);
-  const totalEstimate = expenditures.reduce((sum, item) => sum + (item.estimate || 0), 0);
+  const totalActual = expenditures.reduce(
+    (sum, item) => sum + (item.actual || 0),
+    0,
+  );
+  const totalEstimate = expenditures.reduce(
+    (sum, item) => sum + (item.estimate || 0),
+    0,
+  );
   const baseTotal = totalActual > 0 ? totalActual : totalEstimate;
 
   return categories.map((catKey) => {
-    const config = CATEGORY_CONFIG[catKey] || { label: catKey, color: "#9ca3af", lightColor: "rgba(156,163,175,0.15)" };
+    const config = CATEGORY_CONFIG[catKey] || {
+      label: catKey,
+      color: "#9ca3af",
+      lightColor: "rgba(156,163,175,0.15)",
+    };
     const items = expenditures.filter((i) => i.category === catKey);
-    const catEstimate = Math.round(items.reduce((s, i) => s + (i.estimate || 0), 0) * 10) / 10;
-    const catActual = Math.round(items.reduce((s, i) => s + (i.actual || 0), 0) * 10) / 10;
+    const catEstimate =
+      Math.round(items.reduce((s, i) => s + (i.estimate || 0), 0) * 10) / 10;
+    const catActual =
+      Math.round(items.reduce((s, i) => s + (i.actual || 0), 0) * 10) / 10;
     const value = totalActual > 0 ? catActual : catEstimate;
-    const percentage = baseTotal > 0 ? Math.round((value / baseTotal) * 100) : 0;
+    const percentage =
+      baseTotal > 0 ? Math.round((value / baseTotal) * 100) : 0;
 
     return {
       category: catKey,
@@ -650,10 +149,15 @@ export function getPhaseCategoryBreakdown(expenditures) {
 export function CostChart({ project, onExploreMore }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [isExploring, setIsExploring] = useState(false);
-  const [activePhase, setActivePhase] = useState(project.phase || "Construction");
+  const [activePhase, setActivePhase] = useState(
+    project.phase || "Construction",
+  );
 
   const costs = getProjectPhaseCosts(project);
-  const maxVal = Math.max(...costs.map((c) => Math.max(c.estimate || 0, c.actual || 0)), 10);
+  const maxVal = Math.max(
+    ...costs.map((c) => Math.max(c.estimate || 0, c.actual || 0)),
+    10,
+  );
   const chartHeight = 220;
   const chartWidth = 700;
   const paddingLeft = 50;
@@ -667,8 +171,12 @@ export function CostChart({ project, onExploreMore }) {
 
   const gridTicks = [0, 0.25, 0.5, 0.75, 1];
 
-  const activeCost = costs.find((c) => c.phase === activePhase) || { estimate: 0, actual: 0 };
-  const activeVariance = Math.round((activeCost.estimate - activeCost.actual) * 10) / 10;
+  const activeCost = costs.find((c) => c.phase === activePhase) || {
+    estimate: 0,
+    actual: 0,
+  };
+  const activeVariance =
+    Math.round((activeCost.estimate - activeCost.actual) * 10) / 10;
   const expenditures = getPhaseExpenditures(project, activePhase);
 
   const handleExploreClick = () => {
@@ -810,7 +318,10 @@ export function CostChart({ project, onExploreMore }) {
                       rx="4"
                     />
                     <text
-                      x={Math.max(10, Math.min(chartWidth - 140, centerX - 65)) + 10}
+                      x={
+                        Math.max(10, Math.min(chartWidth - 140, centerX - 65)) +
+                        10
+                      }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 16}
                       fill="#8d969d"
                       fontSize="11"
@@ -818,7 +329,10 @@ export function CostChart({ project, onExploreMore }) {
                       Estimate: ${c.estimate}M
                     </text>
                     <text
-                      x={Math.max(10, Math.min(chartWidth - 140, centerX - 65)) + 10}
+                      x={
+                        Math.max(10, Math.min(chartWidth - 140, centerX - 65)) +
+                        10
+                      }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 34}
                       fill="#e7a63b"
                       fontSize="11"
@@ -833,19 +347,32 @@ export function CostChart({ project, onExploreMore }) {
         </svg>
         <div className="chart-legend">
           <div className="chart-legend-item">
-            <span className="chart-legend-color" style={{ background: "#8d969d" }} />
+            <span
+              className="chart-legend-color"
+              style={{ background: "#8d969d" }}
+            />
             <span>Estimate</span>
           </div>
           <div className="chart-legend-item">
-            <span className="chart-legend-color" style={{ background: "#e7a63b" }} />
+            <span
+              className="chart-legend-color"
+              style={{ background: "#e7a63b" }}
+            />
             <span>Actual</span>
           </div>
         </div>
       </div>
 
       {isExploring && (
-        <div className="cost-exploration-panel" aria-label={`Cost breakdown for ${activePhase}`}>
-          <div className="phase-cost-nav" role="tablist" aria-label="Select phase to explore">
+        <div
+          className="cost-exploration-panel"
+          aria-label={`Cost breakdown for ${activePhase}`}
+        >
+          <div
+            className="phase-cost-nav"
+            role="tablist"
+            aria-label="Select phase to explore"
+          >
             {phases.map((p) => {
               const pCost = costs.find((c) => c.phase === p);
               const isSelected = activePhase === p;
@@ -860,7 +387,9 @@ export function CostChart({ project, onExploreMore }) {
                 >
                   <span className="phase-cost-tab-name">{p}</span>
                   <span className="phase-cost-tab-amount">
-                    {pCost ? `$${pCost.actual > 0 ? pCost.actual : pCost.estimate}M` : "-"}
+                    {pCost
+                      ? `$${pCost.actual > 0 ? pCost.actual : pCost.estimate}M`
+                      : "-"}
                   </span>
                 </button>
               );
@@ -883,7 +412,8 @@ export function CostChart({ project, onExploreMore }) {
             <div className="phase-summary-card">
               <span>Variance</span>
               <strong className={activeVariance < 0 ? "negative" : "positive"}>
-                {activeVariance >= 0 ? "+" : ""}${Math.abs(activeVariance).toFixed(1)}M
+                {activeVariance >= 0 ? "+" : ""}$
+                {Math.abs(activeVariance).toFixed(1)}M
               </strong>
             </div>
           </div>
@@ -906,14 +436,16 @@ export function CostChart({ project, onExploreMore }) {
                   <tr key={exp.id}>
                     <td>
                       <strong>{exp.title}</strong>
-                      <small>{exp.id}</small>
                     </td>
                     <td>{exp.category}</td>
                     <td>{exp.vendor}</td>
                     <td className="num">${exp.estimate}M</td>
                     <td className="num">${exp.actual}M</td>
-                    <td className={`num ${exp.variance < 0 ? "negative" : "positive"}`}>
-                      {exp.variance >= 0 ? "+" : ""}${Math.abs(exp.variance).toFixed(1)}M
+                    <td
+                      className={`num ${exp.variance < 0 ? "negative" : "positive"}`}
+                    >
+                      {exp.variance >= 0 ? "+" : ""}$
+                      {Math.abs(exp.variance).toFixed(1)}M
                     </td>
                     <td>
                       <StatusTag status={exp.status} />
@@ -929,7 +461,13 @@ export function CostChart({ project, onExploreMore }) {
   );
 }
 
-export function PhasePieChart({ breakdown, totalAmount, isActual, selectedCategory, onSelectCategory }) {
+export function PhasePieChart({
+  breakdown,
+  totalAmount,
+  isActual,
+  selectedCategory,
+  onSelectCategory,
+}) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   const cx = 115;
@@ -982,113 +520,127 @@ export function PhasePieChart({ breakdown, totalAmount, isActual, selectedCatego
       <div className="section-head">
         <div>
           <h2>Expense category breakdown</h2>
-          <p>Distribution of materials, salaries, subcontractors, equipment, and statutory permits.</p>
+          <p>
+            Distribution of materials, salaries, subcontractors, equipment, and
+            statutory permits.
+          </p>
         </div>
         <Tag type="blue" size="sm">
           {isActual ? "Actual Incurred" : "Estimated Cost"}
         </Tag>
       </div>
 
-      <div className="pie-chart-box">
-        <svg
-          className="svg-pie-chart"
-          viewBox="0 0 230 230"
-          style={{ width: "230px", height: "230px" }}
-          aria-label="Category expenditure donut chart"
-        >
-          {totalValue === 0 ? (
-            <circle
-              cx={cx}
-              cy={cy}
-              r={(outerR + innerR) / 2}
-              fill="none"
-              stroke="#373c40"
-              strokeWidth={outerR - innerR}
-            />
-          ) : (
-            slices.map((slice) => {
-              if (!slice.pathData) return null;
-              const isHovered = hoveredIndex === slice.index;
-              const isSelected = selectedCategory === slice.category;
-              const shift = isHovered || isSelected ? 5 : 0;
-              const tx = shift * Math.cos(slice.midAngle);
-              const ty = shift * Math.sin(slice.midAngle);
-
-              return (
-                <path
-                  key={slice.category}
-                  d={slice.pathData}
-                  fill={slice.color}
-                  transform={`translate(${tx}, ${ty})`}
-                  className="pie-slice"
-                  onMouseEnter={() => setHoveredIndex(slice.index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                  onClick={() =>
-                    onSelectCategory(selectedCategory === slice.category ? "All" : slice.category)
-                  }
-                  style={{
-                    opacity:
-                      selectedCategory === "All" || isSelected || isHovered ? 1 : 0.4,
-                  }}
-                />
-              );
-            })
-          )}
-
-          <circle cx={cx} cy={cy} r={innerR - 2} fill="#181c1f" />
-
-          <text
-            x={cx}
-            y={cy - 4}
-            textAnchor="middle"
-            className="pie-center-value"
+      <div className="phase-pie-content">
+        <div className="pie-chart-box">
+          <svg
+            className="svg-pie-chart"
+            viewBox="0 0 230 230"
+            style={{ width: "230px", height: "230px" }}
+            aria-label="Category expenditure donut chart"
           >
-            ${activeHovered ? activeHovered.value : totalAmount}M
-          </text>
-          <text
-            x={cx}
-            y={cy + 16}
-            textAnchor="middle"
-            className="pie-center-label"
-          >
-            {activeHovered
-              ? activeHovered.label
-              : isActual
-                ? "Actual spent"
-                : "Phase estimate"}
-          </text>
-        </svg>
-      </div>
+            {totalValue === 0 ? (
+              <circle
+                cx={cx}
+                cy={cy}
+                r={(outerR + innerR) / 2}
+                fill="none"
+                stroke="#373c40"
+                strokeWidth={outerR - innerR}
+              />
+            ) : (
+              slices.map((slice) => {
+                if (!slice.pathData) return null;
+                const isHovered = hoveredIndex === slice.index;
+                const isSelected = selectedCategory === slice.category;
+                const shift = isHovered || isSelected ? 5 : 0;
+                const tx = shift * Math.cos(slice.midAngle);
+                const ty = shift * Math.sin(slice.midAngle);
 
-      <div className="category-legend-list">
-        {breakdown.map((cat) => {
-          const isSelected = selectedCategory === cat.category;
-          return (
-            <div
-              key={cat.category}
-              className={`category-legend-item ${isSelected ? "active" : ""}`}
-              onClick={() =>
-                onSelectCategory(isSelected ? "All" : cat.category)
-              }
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  onSelectCategory(isSelected ? "All" : cat.category);
-                }
-              }}
+                return (
+                  <path
+                    key={slice.category}
+                    d={slice.pathData}
+                    fill={slice.color}
+                    transform={`translate(${tx}, ${ty})`}
+                    className="pie-slice"
+                    onMouseEnter={() => setHoveredIndex(slice.index)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    onClick={() =>
+                      onSelectCategory(
+                        selectedCategory === slice.category
+                          ? "All"
+                          : slice.category,
+                      )
+                    }
+                    style={{
+                      opacity:
+                        selectedCategory === "All" || isSelected || isHovered
+                          ? 1
+                          : 0.4,
+                    }}
+                  />
+                );
+              })
+            )}
+
+            <circle cx={cx} cy={cy} r={innerR - 2} fill="#181c1f" />
+
+            <text
+              x={cx}
+              y={cy - 4}
+              textAnchor="middle"
+              className="pie-center-value"
             >
-              <div className="category-legend-meta">
-                <span className="category-dot" style={{ background: cat.color }} />
-                <span>{cat.label}</span>
+              ${activeHovered ? activeHovered.value : totalAmount}M
+            </text>
+            <text
+              x={cx}
+              y={cy + 16}
+              textAnchor="middle"
+              className="pie-center-label"
+            >
+              {activeHovered
+                ? activeHovered.label
+                : isActual
+                  ? "Actual spent"
+                  : "Phase estimate"}
+            </text>
+          </svg>
+        </div>
+
+        <div className="category-legend-list">
+          {breakdown.map((cat) => {
+            const isSelected = selectedCategory === cat.category;
+            return (
+              <div
+                key={cat.category}
+                className={`category-legend-item ${isSelected ? "active" : ""}`}
+                onClick={() =>
+                  onSelectCategory(isSelected ? "All" : cat.category)
+                }
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    onSelectCategory(isSelected ? "All" : cat.category);
+                  }
+                }}
+              >
+                <div className="category-legend-meta">
+                  <span
+                    className="category-dot"
+                    style={{ background: cat.color }}
+                  />
+                  <span>{cat.label}</span>
+                </div>
+                <div className="category-legend-values">
+                  <strong>${cat.value}M</strong>
+                  <span className="category-legend-pct">{cat.percentage}%</span>
+                </div>
               </div>
-              <div className="category-legend-values">
-                <strong>${cat.value}M</strong>
-                <span className="category-legend-pct">{cat.percentage}%</span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </section>
   );
@@ -1097,7 +649,10 @@ export function PhasePieChart({ breakdown, totalAmount, isActual, selectedCatego
 export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const costs = getProjectPhaseCosts(project);
-  const maxVal = Math.max(...costs.map((c) => Math.max(c.estimate || 0, c.actual || 0)), 10);
+  const maxVal = Math.max(
+    ...costs.map((c) => Math.max(c.estimate || 0, c.actual || 0)),
+    10,
+  );
   const chartHeight = 220;
   const chartWidth = 760;
   const paddingLeft = 50;
@@ -1116,40 +671,27 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
       <div className="section-head">
         <div>
           <h2>Lifecycle phases comparative expenditure</h2>
-          <p>Estimate compared with actual expenditure across lifecycle phases. Click any phase to inspect details.</p>
+          <p>
+            Estimate compared with actual expenditure across lifecycle phases.
+            Click any phase to inspect details.
+          </p>
         </div>
         <div className="chart-legend">
           <div className="chart-legend-item">
-            <span className="chart-legend-color" style={{ background: "#8d969d" }} />
+            <span
+              className="chart-legend-color"
+              style={{ background: "#8d969d" }}
+            />
             <span>Estimate</span>
           </div>
           <div className="chart-legend-item">
-            <span className="chart-legend-color" style={{ background: "#e7a63b" }} />
+            <span
+              className="chart-legend-color"
+              style={{ background: "#e7a63b" }}
+            />
             <span>Actual</span>
           </div>
         </div>
-      </div>
-
-      <div className="phase-cost-nav" role="tablist" aria-label="Select phase to explore">
-        {phases.map((p) => {
-          const pCost = costs.find((c) => c.phase === p);
-          const isSelected = selectedPhase === p;
-          return (
-            <button
-              key={p}
-              type="button"
-              role="tab"
-              aria-selected={isSelected}
-              className={`phase-cost-tab ${isSelected ? "active" : ""}`}
-              onClick={() => onSelectPhase(p)}
-            >
-              <span className="phase-cost-tab-name">{p}</span>
-              <span className="phase-cost-tab-amount">
-                {pCost ? `$${pCost.actual > 0 ? pCost.actual : pCost.estimate}M` : "-"}
-              </span>
-            </button>
-          );
-        })}
       </div>
 
       <div className="phase-interactive-graph-wrap">
@@ -1273,7 +815,10 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                       rx="4"
                     />
                     <text
-                      x={Math.max(10, Math.min(chartWidth - 140, centerX - 65)) + 10}
+                      x={
+                        Math.max(10, Math.min(chartWidth - 140, centerX - 65)) +
+                        10
+                      }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 16}
                       fill="#8d969d"
                       fontSize="11"
@@ -1281,7 +826,10 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                       Estimate: ${c.estimate}M
                     </text>
                     <text
-                      x={Math.max(10, Math.min(chartWidth - 140, centerX - 65)) + 10}
+                      x={
+                        Math.max(10, Math.min(chartWidth - 140, centerX - 65)) +
+                        10
+                      }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 34}
                       fill="#e7a63b"
                       fontSize="11"
@@ -1299,14 +847,20 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
   );
 }
 
-export function PhaseExpenseLedger({ project, expenditures, selectedPhase, selectedCategory, onSelectCategory }) {
+export function PhaseExpenseLedger({
+  project,
+  expenditures,
+  selectedPhase,
+  selectedCategory,
+  onSelectCategory,
+  categories = [],
+}) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedMaterialId, setExpandedMaterialId] = useState(null);
-
-  const phaseMaterials = getPhaseMaterials(project, selectedPhase);
+  const [expandedExpenditureId, setExpandedExpenditureId] = useState(null);
 
   const filtered = expenditures.filter((item) => {
-    const matchesCat = selectedCategory === "All" || item.category === selectedCategory;
+    const matchesCat =
+      selectedCategory === "All" || item.category === selectedCategory;
     const matchesSearch =
       searchTerm.trim() === "" ||
       item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1316,57 +870,55 @@ export function PhaseExpenseLedger({ project, expenditures, selectedPhase, selec
     return matchesCat && matchesSearch;
   });
 
-  const totalEst = Math.round(filtered.reduce((s, i) => s + (i.estimate || 0), 0) * 10) / 10;
-  const totalAct = Math.round(filtered.reduce((s, i) => s + (i.actual || 0), 0) * 10) / 10;
+  const totalEst =
+    Math.round(filtered.reduce((s, i) => s + (i.estimate || 0), 0) * 10) / 10;
+  const totalAct =
+    Math.round(filtered.reduce((s, i) => s + (i.actual || 0), 0) * 10) / 10;
   const totalVar = Math.round((totalEst - totalAct) * 10) / 10;
+
+  // Same category state as the pie chart: picking here highlights the slice, clicking a slice updates this
+  const categoryOptions = [
+    { value: "All", label: "All categories" },
+    ...categories.map((category) => ({ value: category, label: category })),
+  ];
+  const activeCategoryColor =
+    selectedCategory !== "All" ? CATEGORY_CONFIG[selectedCategory]?.color : null;
 
   return (
     <section className="panel phase-ledger-panel">
       <div className="section-head" style={{ padding: "18px 20px 0" }}>
         <div>
           <h2>Itemized expenses · {selectedPhase}</h2>
-          <p>Line-item vouchers, contracts, materials, equipment, and statutory fees for this phase.</p>
+          <p>
+            Line-item vouchers, contracts, materials, equipment, and statutory
+            fees for this phase.
+          </p>
         </div>
-        <span>{filtered.length} expenses</span>
       </div>
 
       <div className="ledger-controls">
-        <div className="ledger-search-container">
-          <label className="ledger-search-box">
-            <MagnifyingGlass size={15} className="ledger-search-icon" aria-hidden="true" />
-            <input
-              type="text"
-              placeholder="Search expenses by scope, contractor, vendor, or voucher ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Filter expenses list"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                className="ledger-search-clear"
-                onClick={() => setSearchTerm("")}
-                title="Clear search"
-                aria-label="Clear search"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </label>
-          {selectedCategory !== "All" && (
-            <div className="ledger-active-category-pill">
-              <span>Category: <strong>{selectedCategory}</strong></span>
-              <button
-                type="button"
-                onClick={() => onSelectCategory("All")}
-                title="Clear category filter"
-                aria-label="Clear category filter"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
-        </div>
+        <FilterBar
+          searchValue={searchTerm}
+          onSearchChange={setSearchTerm}
+          placeholder="Search expenditure by title, vendor, ID, or category"
+          ariaLabel="Filter expenses list"
+          onReset={() => {
+            setSearchTerm("");
+            onSelectCategory("All");
+          }}
+          canReset={searchTerm.trim() !== "" || selectedCategory !== "All"}
+          count={filtered.length}
+          countLabel={`of ${expenditures.length} shown`}
+        >
+          <FilterSelect
+            label="Filter by expense category"
+            value={selectedCategory}
+            onChange={onSelectCategory}
+            options={categoryOptions}
+            className={activeCategoryColor ? "is-active" : ""}
+            style={activeCategoryColor ? { borderColor: activeCategoryColor } : undefined}
+          />
+        </FilterBar>
       </div>
 
       <div className="phase-ledger-table-wrap">
@@ -1380,29 +932,41 @@ export function PhaseExpenseLedger({ project, expenditures, selectedPhase, selec
               <th className="num">Actual spent</th>
               <th className="num">Variance</th>
               <th>Status</th>
-              <th style={{ width: "36px", padding: "10px 8px" }} aria-label="Details" />
+              <th
+                style={{ width: "36px", padding: "10px 8px" }}
+                aria-label="Details"
+              />
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", padding: "32px", color: "var(--muted)" }}>
-                  No expenditure records match the selected category or search filter.
+                <td
+                  colSpan={8}
+                  style={{
+                    textAlign: "center",
+                    padding: "32px",
+                    color: "var(--muted)",
+                  }}
+                >
+                  No expenditure records match the selected category or search
+                  filter.
                 </td>
               </tr>
             ) : (
               filtered.map((exp) => {
-                const catCfg = CATEGORY_CONFIG[exp.category] || { color: "#8d969d", lightColor: "rgba(141,150,157,0.15)" };
-                const isMaterialCat = exp.category === "Materials";
-                const isExpanded = expandedMaterialId === exp.id;
+                const catCfg = CATEGORY_CONFIG[exp.category] || {
+                  color: "#8d969d",
+                  lightColor: "rgba(141,150,157,0.15)",
+                };
+                const isExpanded = expandedExpenditureId === exp.id;
                 return (
                   <React.Fragment key={exp.id}>
                     <tr>
                       <td>
-                        <strong style={{ color: "#f2f4f4" }}>{exp.title}</strong>
-                        <small style={{ fontFamily: '"IBM Plex Mono", monospace', color: "var(--muted)", display: "block", marginTop: "2px" }}>
-                          {exp.id}
-                        </small>
+                        <strong style={{ color: "#f2f4f4" }}>
+                          {exp.title}
+                        </strong>
                       </td>
                       <td>
                         <span
@@ -1419,43 +983,66 @@ export function PhaseExpenseLedger({ project, expenditures, selectedPhase, selec
                       <td style={{ color: "#c8ced2" }}>{exp.vendor}</td>
                       <td className="num">${exp.estimate}M</td>
                       <td className="num">${exp.actual}M</td>
-                      <td className={`num ${exp.variance < 0 ? "negative" : "positive"}`}>
-                        {exp.variance >= 0 ? "+" : ""}${Math.abs(exp.variance).toFixed(1)}M
+                      <td
+                        className={`num ${exp.variance < 0 ? "negative" : "positive"}`}
+                      >
+                        {exp.variance >= 0 ? "+" : ""}$
+                        {Math.abs(exp.variance).toFixed(1)}M
                       </td>
                       <td>
                         <StatusTag status={exp.status} />
                       </td>
                       <td style={{ textAlign: "center", padding: "8px 6px" }}>
-                        {isMaterialCat && (
-                          <button
-                            type="button"
-                            className={`ledger-more-details-btn ${isExpanded ? "is-active" : ""}`}
-                            onClick={() => setExpandedMaterialId(isExpanded ? null : exp.id)}
-                            aria-expanded={isExpanded}
-                            title={isExpanded ? "Hide details" : "More details"}
-                            aria-label={isExpanded ? "Hide details" : "More details"}
-                          >
-                            <ChevronDown size={15} className="toggle-arrow" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className={`ledger-more-details-btn ${isExpanded ? "is-active" : ""}`}
+                          onClick={() =>
+                            setExpandedExpenditureId(isExpanded ? null : exp.id)
+                          }
+                          aria-expanded={isExpanded}
+                          title={isExpanded ? "Hide details" : "More details"}
+                          aria-label={
+                            isExpanded ? "Hide details" : "More details"
+                          }
+                        >
+                          <ChevronDown size={15} className="toggle-arrow" />
+                        </button>
                       </td>
                     </tr>
-                    {isMaterialCat && isExpanded && (
+                    {isExpanded && (
                       <tr className="ledger-material-drawer-row">
                         <td colSpan={8}>
                           <div className="simple-materials-list-wrap">
-                            <span className="simple-materials-heading">Materials used:</span>
+                            <span className="simple-materials-heading">
+                              Expenditure details:
+                            </span>
                             <div className="simple-materials-items">
-                              {phaseMaterials.map((mat) => (
-                                <div key={mat.id} className="simple-material-row">
-                                  <span className="mat-dot" />
-                                  <span className="mat-name">{mat.name}</span>
-                                  <span className="mat-qty">· {mat.consumedQty} / {mat.quantity} ({mat.percentConsumed}%)</span>
-                                  <span className={`mat-status-tag ${mat.status.includes("In Use") ? "in-use" : "staged"}`}>
-                                    {mat.status}
-                                  </span>
-                                </div>
-                              ))}
+                              <div className="simple-material-row">
+                                <span className="mat-dot" />
+                                <span className="mat-name">{exp.title}</span>
+                                <span className="mat-qty">
+                                  · Vendor:{" "}
+                                  {exp.vendor || "Direct project operations"}
+                                </span>
+                                <span className="mat-qty">
+                                  · Recorded:{" "}
+                                  {exp.expenditureDate || "Baseline"}
+                                </span>
+                                <span className="mat-qty">
+                                  · Category: {exp.category}
+                                </span>
+                                <span
+                                  className={`mat-status-tag ${
+                                    String(exp.status || "")
+                                      .toLowerCase()
+                                      .includes("incurred")
+                                      ? "in-use"
+                                      : "staged"
+                                  }`}
+                                >
+                                  {exp.status}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -1490,7 +1077,8 @@ export function CostOutlook({ project }) {
   const actual = costs.reduce((sum, phase) => sum + (phase.actual || 0), 0);
   const remaining = Math.max(0, (project.budget || 0) - actual);
   const committed = remaining * 0.7;
-  const forecast = Math.max(project.budget || 0, actual) + (project.budget || 0) * 0.04;
+  const forecast =
+    Math.max(project.budget || 0, actual) + (project.budget || 0) * 0.04;
   const pending = (project.budget || 0) * 0.015;
   return (
     <section className="control-section">
@@ -1514,9 +1102,12 @@ export function CostOutlook({ project }) {
         ))}
       </div>
       <p className="control-note">
-        Commitments are unpaid orders. Pending changes are excluded from the final-cost forecast.
+        Commitments are unpaid orders. Pending changes are excluded from the
+        final-cost forecast.
       </p>
-      <Source
+      <DetailPanel
+        showToggle={false}
+        as="details"
         project={project}
         title="Monthly cost forecast and change register"
         sender="Cost controller"
@@ -1547,7 +1138,8 @@ export function CostAnalysisPage({
     estimate: 0,
     actual: 0,
   };
-  const variance = Math.round((currentCost.estimate - currentCost.actual) * 10) / 10;
+  const variance =
+    Math.round((currentCost.estimate - currentCost.actual) * 10) / 10;
   const isActual = currentCost.actual > 0;
   const totalAmount = isActual ? currentCost.actual : currentCost.estimate;
 
@@ -1557,33 +1149,33 @@ export function CostAnalysisPage({
   const Container = isEmbedded ? "div" : "main";
 
   return (
-    <Container className={`page phase-cost-analysis-page ${isEmbedded ? "is-embedded" : ""}`}>
+    <Container
+      className={`phase-cost-analysis-page ${isEmbedded ? "is-embedded" : "page"}`}
+    >
       {!isEmbedded && onBack && (
         <button type="button" className="back" onClick={onBack}>
           <ArrowLeft size={17} /> Back to {project.name}
         </button>
       )}
 
-      <div className="phase-cost-hero">
-        <div className="hero-titles">
-          {!isEmbedded && (
+      {!isEmbedded && (
+        <div className="phase-cost-hero">
+          <div className="hero-titles">
             <div className="title-line">
-              <span>{project.id}</span>
+              <span className="technical-id">{project.id}</span>
               <Tag type="warm-gray" size="sm">
                 Current Project Phase: {project.phase}
               </Tag>
             </div>
-          )}
-          {isEmbedded ? (
-            <h2>Phase Cost & Expenditure Analysis</h2>
-          ) : (
             <h1>{project.name} · Phase Cost & Expenditure Analysis</h1>
-          )}
-          <p>
-            Interactive cross-phase comparative expenditure graph, category distribution (materials, salaries & labor, equipment & plant, subcontractors, permits & fees), and itemized expense ledger.
-          </p>
+            <p>
+              Interactive cross-phase comparative expenditure graph, category
+              distribution (materials, salaries & labor, equipment & plant,
+              subcontractors, permits & fees), and itemized expense ledger.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <section className="phase-cost-kpis">
         <div className="phase-cost-kpi-card">
@@ -1632,6 +1224,9 @@ export function CostAnalysisPage({
           selectedPhase={selectedPhase}
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
+          categories={categoryBreakdown
+            .filter((cat) => cat.itemsCount > 0 || cat.category === selectedCategory)
+            .map((cat) => cat.category)}
         />
       </div>
     </Container>
@@ -1639,4 +1234,3 @@ export function CostAnalysisPage({
 }
 
 export default CostAnalysisPage;
-

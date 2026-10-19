@@ -1,0 +1,85 @@
+/* ── List row ───────────────────────────────────────────────────── */
+.list-row {
+  --list-row-columns: 34px minmax(0, 1fr) auto;
+  --list-row-gap: 12px;
+  --list-row-padding: 17px 4px;
+  --list-row-body-gap: 5px;
+  --list-row-hover: rgba(255, 255, 255, 0.025);
+  display: grid;
+  grid-template-columns: var(--list-row-columns);
+  align-items: center;
+  gap: var(--list-row-gap);
+  width: 100%;
+  padding: var(--list-row-padding);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+button.list-row {
+  cursor: pointer;
+}
+
+button.list-row:disabled {
+  cursor: default;
+}
+
+.list-row:hover {
+  background: var(--list-row-hover);
+}
+
+.list-row-body {
+  display: grid;
+  min-width: 0;
+  gap: var(--list-row-body-gap);
+}
+
+.list-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.list-row-title,
+.list-row-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-row-title {
+  color: var(--text);
+}
+
+.list-row-description {
+  color: var(--muted);
+}
+
+.list-row-context {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  color: var(--muted);
+}
+
+.list-row-context span + span::before {
+  content: "·";
+  margin-right: 0.5rem;
+}
+
+/* Small screens: trailing items drop under the title, aligned with it */
+@media (max-width: 640px) {
+  .list-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .list-row > :nth-child(n + 3) {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

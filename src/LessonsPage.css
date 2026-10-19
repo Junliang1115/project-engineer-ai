@@ -7,9 +7,13 @@
   min-width: 0;
   overflow-y: auto;
   padding: 16px 22px;
-  color: #e7ecef;
-  background: #14171a;
+  color: inherit;
+  background: transparent;
   box-sizing: border-box;
+}
+
+.lessons-page.issues-page {
+  padding: 0;
 }
 
 .lessons-heading {
@@ -51,104 +55,49 @@
 }
 
 .lessons-heading h1 {
-  font-size: 16px;
-  font-weight: 700;
   margin: 0;
   color: #ffffff;
-  letter-spacing: -0.01em;
 }
 
 .lessons-heading p {
-  font-size: 11.5px;
   color: #8e8ea0;
   margin: 0;
 }
 
 .lessons-count-pill {
-  font-size: 10.5px;
-  font-family: "IBM Plex Mono", monospace;
   color: #8ed7c4;
   background: rgba(142, 215, 196, 0.1);
   border: 1px solid rgba(142, 215, 196, 0.25);
   border-radius: 12px;
   padding: 1px 8px;
-  font-weight: 500;
 }
 
 /* Toolbar: Compact Search & Filter Dropdowns */
-.lessons-toolbar {
+.lessons-toolbar.filter-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  background: #191c20;
-  border: 1px solid #282d32;
-  border-radius: 6px;
-  padding: 6px 8px;
+  padding: 0;
   margin-bottom: 12px;
 }
 
-.lessons-search {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #111316;
-  border: 1px solid #2d3338;
-  border-radius: 5px;
-  padding: 0 8px;
-  height: 28px;
+.lessons-page.issues-page .lessons-toolbar.filter-bar {
+  margin-bottom: 16px;
+}
+
+.lessons-toolbar .search-bar-box {
   flex: 1;
-  min-width: 180px;
-  transition: border-color 0.15s ease;
-}
-
-.lessons-search:focus-within {
-  border-color: #8ed7c4;
-}
-
-.lessons-search .search-icon {
-  color: #71787e;
-  flex-shrink: 0;
-}
-
-.lessons-search input {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #e7ecef;
-  font-size: 11.5px;
-  width: 100%;
-  min-width: 0;
-  font-family: inherit;
-}
-
-.lessons-search input::placeholder {
-  color: #656c72;
-}
-
-.lessons-search-clear {
-  background: transparent !important;
-  border: none !important;
-  color: #71787e !important;
-  cursor: pointer;
-  padding: 2px !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.lessons-search-clear:hover {
-  color: #ffffff !important;
 }
 
 .lessons-page select {
+  min-width: 0;
   background: #111316;
   color: #c5ccd1;
   border: 1px solid #2d3338;
   border-radius: 5px;
   height: 28px;
   padding: 0 8px;
-  font-size: 11.5px;
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s ease;
@@ -156,27 +105,6 @@
 
 .lessons-page select:focus {
   border-color: #8ed7c4;
-}
-
-.lessons-reset-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 28px;
-  padding: 0 8px !important;
-  font-size: 11px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid #3b4247 !important;
-  color: #a9b0b5 !important;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.lessons-reset-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
-  border-color: #555d63 !important;
 }
 
 /* Compact Data Table */
@@ -198,11 +126,6 @@
   padding: 8px 10px;
   background: #1c2024;
   color: #8e8ea0;
-  font-size: 10px;
-  font-family: "IBM Plex Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
   text-align: left;
   border-bottom: 1px solid #282d32;
   white-space: nowrap;
@@ -213,8 +136,6 @@
   border-bottom: 1px solid #22262a;
   text-align: left;
   vertical-align: top;
-  font-size: 11.5px;
-  line-height: 1.45;
   color: #c9d0d4;
   overflow-wrap: break-word;
 }
@@ -230,9 +151,6 @@
 /* Badges & Pills in Cells */
 .lesson-id-badge {
   display: inline-block;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10.5px;
-  font-weight: 600;
   color: #8ed7c4;
   background: rgba(142, 215, 196, 0.1);
   border: 1px solid rgba(142, 215, 196, 0.22);
@@ -242,10 +160,8 @@
 
 .lesson-project-sub {
   display: block;
-  font-size: 10px;
   color: #7a838a;
   margin-top: 3px;
-  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -253,8 +169,6 @@
 
 .lesson-phase-pill {
   display: inline-block;
-  font-family: "IBM Plex Mono", monospace;
-  font-size: 10.5px;
   color: #e59866;
   background: rgba(229, 152, 102, 0.1);
   border: 1px solid rgba(229, 152, 102, 0.22);
@@ -265,7 +179,6 @@
 
 .lesson-cat-pill {
   display: inline-block;
-  font-size: 10.5px;
   color: #90caf9;
   background: rgba(144, 202, 249, 0.08);
   border: 1px solid rgba(144, 202, 249, 0.18);
@@ -282,7 +195,6 @@
 
 .lesson-learned-cell strong {
   color: #ffffff;
-  font-weight: 600;
 }
 
 /* Empty State */
@@ -293,7 +205,6 @@
   gap: 8px;
   justify-items: center;
   color: #8e8ea0;
-  font-size: 12px;
 }
 
 .lessons-empty-reset {
@@ -305,7 +216,6 @@
   color: #dce3e6 !important;
   padding: 5px 12px !important;
   border-radius: 4px;
-  font-size: 11.5px !important;
   cursor: pointer;
 }
 
@@ -314,20 +224,13 @@
   color: #ffffff !important;
 }
 
-/* Legacy styles compatibility */
-.lesson-record { border-bottom: 1px solid #282d32; }
-.lesson-record summary { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; padding: 12px 4px; list-style: none; font-size: 12px; }
-.lesson-record-icon { color: #8ed7c4; flex-shrink: 0; padding-top: 2px; }
-.lesson-record-body { padding: 0 14px 16px 30px; font-size: 12px; line-height: 1.5; }
-.lesson-message { border-left: 2px solid #3b4145; padding: 6px 12px; margin-bottom: 10px; }
 .lessons-page :is(button, summary, select, input):focus-visible { outline: 2px solid #8ed7c4; outline-offset: 2px; }
-.sidebar-nav-item[aria-current="page"] { background: #283a35; color: #91d9bd; }
 
 @media (max-width: 768px) {
   .lessons-page {
     padding: 12px 14px;
   }
-  .lessons-toolbar select {
+  .lessons-toolbar.filter-bar select {
     flex: 1;
     min-width: 120px;
   }

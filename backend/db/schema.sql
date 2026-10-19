@@ -65,6 +65,28 @@ create table if not exists project_task (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists expenditure (
+  expenditure_id uuid primary key default gen_random_uuid(),
+  project_id text not null references project(id) on delete cascade,
+  phase_id uuid not null references project_phase(phase_id),
+  milestone_id uuid references milestone(milestone_id) on delete set null,
+  task_id text references project_task(task_id) on delete set null,
+  title text not null,
+  category text not null,
+  vendor text,
+  estimated_amount numeric(14,2) not null default 0 check (estimated_amount >= 0),
+  actual_amount numeric(14,2) not null default 0 check (actual_amount >= 0),
+  status text not null default 'forecast' check (status in ('forecast', 'committed', 'incurred', 'invoiced', 'paid', 'cancelled')),
+  expenditure_date date not null default current_date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_expenditure_project_phase on expenditure(project_id, phase_id);
+create index if not exists idx_expenditure_milestone_id on expenditure(milestone_id);
+create index if not exists idx_expenditure_task_id on expenditure(task_id);
+create index if not exists idx_expenditure_date on expenditure(expenditure_date);
+
 create table if not exists activity_log (
   activity_id uuid primary key default gen_random_uuid(),
   project_id text references project(id) on delete cascade,
@@ -90,6 +112,9 @@ create table if not exists risk_register (
   title text not null,
   likelihood text not null default 'Possible',
   impact text not null default 'medium',
+  affected_areas text[] not null default '{}'::text[],
+  priority text not null default 'medium'
+    check (priority in ('critical', 'high', 'medium', 'low')),
   status text not null default 'open',
   mitigation text,
   owner text not null,
@@ -104,7 +129,7 @@ create table if not exists risk_register (
 );
 
 create table if not exists lesson (
-  lesson_id uuid primary key default gen_random_uuid(),
+  lesson_id text primary key,
   project_id text not null references project(id) on delete cascade,
   phase_id uuid references project_phase(phase_id) on delete set null,
   title text not null,
@@ -113,7 +138,8 @@ create table if not exists lesson (
   expected_outcome text,
   difference text,
   description text,
-  business text
+  business text,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists request (

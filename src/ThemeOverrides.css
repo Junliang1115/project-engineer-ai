@@ -1,0 +1,207 @@
+/* Light mode compatibility for legacy components that still use dark literals. */
+:root[data-theme="light"] body,
+:root[data-theme="light"] .app-shell,
+:root[data-theme="light"] .page,
+:root[data-theme="light"] .chat-layout,
+:root[data-theme="light"] .chat-main-area {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Chat */
+:root[data-theme="light"] .conversation-sidebar {
+  background: var(--surface);
+  border-color: var(--line);
+}
+:root[data-theme="light"] .sidebar-divider,
+:root[data-theme="light"] .project-convo-list { border-color: var(--line); background-color: var(--line); }
+:root[data-theme="light"] .project-convo-list { background-color: transparent; }
+:root[data-theme="light"] .sidebar-label,
+:root[data-theme="light"] .project-chevron,
+:root[data-theme="light"] .project-group-badge,
+:root[data-theme="light"] .conversation-topic-icon,
+:root[data-theme="light"] .topic-action-btn,
+:root[data-theme="light"] .turn-action-btn { color: var(--text-secondary) !important; }
+:root[data-theme="light"] .sidebar-nav-item,
+:root[data-theme="light"] .conversation-topic,
+:root[data-theme="light"] .project-group-header { color: var(--text); }
+:root[data-theme="light"] .sidebar-nav-item:hover,
+:root[data-theme="light"] .sidebar-nav-item.active,
+:root[data-theme="light"] .sidebar-nav-item[aria-current="page"],
+:root[data-theme="light"] .conversation-topic:hover,
+:root[data-theme="light"] .conversation-topic.active,
+:root[data-theme="light"] .project-group-header:hover {
+  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+  color: var(--primary) !important;
+}
+:root[data-theme="light"] .chat-top-header {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  border-color: var(--line);
+}
+:root[data-theme="light"] .header-project-pill,
+:root[data-theme="light"] .agent-select-wrapper,
+:root[data-theme="light"] .starter-prompt-btn {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  color: var(--text-secondary);
+}
+:root[data-theme="light"] .header-title-container h1,
+:root[data-theme="light"] .agent-select-value,
+:root[data-theme="light"] .agent-turn-name,
+:root[data-theme="light"] .reasoning-panel-topline strong,
+:root[data-theme="light"] .message-meta { color: var(--text); }
+:root[data-theme="light"] .agent-turn-content p,
+:root[data-theme="light"] .message p,
+:root[data-theme="light"] .reasoning-panel p,
+:root[data-theme="light"] .chat-empty-state p { color: var(--text-secondary); }
+:root[data-theme="light"] .user-message-bubble,
+:root[data-theme="light"] .reasoning-panel {
+  background: var(--surface-raised);
+  border-color: var(--line);
+  box-shadow: none;
+}
+:root[data-theme="light"] .user-message-bubble p { color: var(--text); }
+:root[data-theme="light"] .chat-input-container { background: linear-gradient(to top, var(--bg) 75%, transparent); }
+:root[data-theme="light"] .chat-input-bar,
+:root[data-theme="light"] .chat-input-bar:focus-within,
+:root[data-theme="light"] .agent-dropdown-menu,
+:root[data-theme="light"] .plus-dropdown-menu {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: 0 12px 30px rgba(20, 32, 43, 0.12);
+}
+:root[data-theme="light"] .chat-input-bar input,
+:root[data-theme="light"] .conversation-rename-input,
+:root[data-theme="light"] .header-rename-input { color: var(--text); background: transparent; border-color: var(--line); }
+:root[data-theme="light"] .input-action-btn,
+:root[data-theme="light"] .input-send-btn { background: var(--surface-raised); color: var(--text-secondary); }
+:root[data-theme="light"] .agent-dropdown-item,
+:root[data-theme="light"] .dropdown-item-name,
+:root[data-theme="light"] .plus-dropdown-item,
+:root[data-theme="light"] .plus-item-label { color: var(--text) !important; }
+
+/* Account and integrations */
+:root[data-theme="light"] .plugin-summary-grid article,
+:root[data-theme="light"] .plugin-source-card,
+:root[data-theme="light"] .plugin-activity-panel,
+:root[data-theme="light"] .account-metric-tile,
+:root[data-theme="light"] .account-source-card,
+:root[data-theme="light"] .account-system-panel {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: none;
+}
+:root[data-theme="light"] .account-hero-card {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--surface)), var(--surface));
+  border-color: var(--line);
+  box-shadow: 0 4px 18px rgba(20, 32, 43, 0.08);
+}
+:root[data-theme="light"] .account-source-card:hover { background: var(--surface-raised); border-color: var(--primary); }
+:root[data-theme="light"] .account-hero-title-row h1,
+:root[data-theme="light"] .metric-value,
+:root[data-theme="light"] .section-title-wrap h2,
+:root[data-theme="light"] .source-title-row h2,
+:root[data-theme="light"] .system-panel-header h3,
+:root[data-theme="light"] .spec-val,
+:root[data-theme="light"] .plugin-summary-grid strong,
+:root[data-theme="light"] .plugin-meta-row strong,
+:root[data-theme="light"] .plugin-refresh-time strong,
+:root[data-theme="light"] .plugin-activity-list strong { color: var(--text); }
+:root[data-theme="light"] .plugin-logo,
+:root[data-theme="light"] .plugin-activity-list article,
+:root[data-theme="light"] .source-items-badge,
+:root[data-theme="light"] .account-id-chip { background: var(--surface-raised); border-color: var(--line); color: var(--text-secondary); }
+:root[data-theme="light"] .section-header-row,
+:root[data-theme="light"] .plugin-meta-row { border-color: var(--line); }
+
+/* Project workspace, cards, controls and tables */
+:root[data-theme="light"] .capital-portfolio-wrapper,
+:root[data-theme="light"] .capital-portfolio-wrapper .page { background: var(--bg); color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .panel,
+:root[data-theme="light"] .capital-portfolio-wrapper .project-card,
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-group-card,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-summary-card,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-cost-kpi-card,
+:root[data-theme="light"] .capital-portfolio-wrapper .cost-exploration-panel,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-expenditure-table-wrap,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-ledger-table-wrap {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: none;
+}
+:root[data-theme="light"] .capital-portfolio-wrapper :where(h1, h2, h3, h4),
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-verdict strong,
+:root[data-theme="light"] .capital-portfolio-wrapper .health-metrics strong,
+:root[data-theme="light"] .capital-portfolio-wrapper .detail-panel-card-content,
+:root[data-theme="light"] .capital-portfolio-wrapper .source-evidence-grid strong { color: var(--text); text-shadow: none; }
+:root[data-theme="light"] .capital-portfolio-wrapper :where(input, select),
+:root[data-theme="light"] .capital-portfolio-wrapper .search,
+:root[data-theme="light"] .capital-portfolio-wrapper .search-bar-box,
+:root[data-theme="light"] .capital-portfolio-wrapper .section-header-select {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+  box-shadow: none;
+}
+:root[data-theme="light"] .capital-portfolio-wrapper .search-bar-box:hover,
+:root[data-theme="light"] .capital-portfolio-wrapper .search-bar-box:focus-within { background: var(--surface); border-color: var(--primary); }
+:root[data-theme="light"] .capital-portfolio-wrapper .search-bar-box input { color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper :where(table, thead, tbody, tfoot, tr, th, td) {
+  background-color: transparent;
+  border-color: var(--line);
+  color: var(--text);
+}
+:root[data-theme="light"] .capital-portfolio-wrapper :where(th, .summary-label, small) { color: var(--text-secondary); }
+:root[data-theme="light"] .capital-portfolio-wrapper :where(tbody tr:hover, .activity-log-row:hover) { background: var(--surface-raised); }
+:root[data-theme="light"] .capital-portfolio-wrapper .detail-panel-card,
+:root[data-theme="light"] .capital-portfolio-wrapper .detail-panel-evidence-card,
+:root[data-theme="light"] .capital-portfolio-wrapper .detail-panel-container { background: var(--surface-raised); border-color: var(--line); }
+:root[data-theme="light"] .capital-portfolio-wrapper .skeleton-title,
+:root[data-theme="light"] .capital-portfolio-wrapper .skeleton-card { background: var(--surface-raised); }
+
+/* Milestone dashboard */
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-step:hover,
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-step.is-selected { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-symbol,
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-count-badge,
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-status-chip,
+:root[data-theme="light"] .capital-portfolio-wrapper .task-id-badge { background: var(--surface-raised); border-color: var(--line); color: var(--text-secondary); }
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-step-info strong,
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-tasks-toolbar h4,
+:root[data-theme="light"] .capital-portfolio-wrapper .due-col { color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-tasks-wrapper { background: var(--surface); border-color: var(--line); }
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-task-table th,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-expenditure-table th,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-ledger-table th { background: var(--surface-raised); color: var(--text-secondary); }
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-task-table td,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-expenditure-table td,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-ledger-table td { border-color: var(--line); color: var(--text); }
+
+/* Cost tracking dashboard */
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-cost-kpi-card strong,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-summary-card strong { color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .pie-center-value { fill: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .ledger-controls,
+:root[data-theme="light"] .capital-portfolio-wrapper .phase-ledger-table tfoot td { background: var(--surface-raised); color: var(--text); }
+
+/* Lesson learned register */
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-page { background: transparent; color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-heading h1,
+:root[data-theme="light"] .capital-portfolio-wrapper .lesson-learned-cell strong { color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-table-wrap { background: var(--surface); border-color: var(--line); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-page select,
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-search { background: var(--surface); border-color: var(--line); color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-search input { color: var(--text); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-table th { background: var(--surface-raised); color: var(--text-secondary); border-color: var(--line); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-table td,
+:root[data-theme="light"] .capital-portfolio-wrapper .lesson-event-cell,
+:root[data-theme="light"] .capital-portfolio-wrapper .lesson-root-cell,
+:root[data-theme="light"] .capital-portfolio-wrapper .lesson-action-cell { color: var(--text); border-color: var(--line); }
+:root[data-theme="light"] .capital-portfolio-wrapper .lessons-table tbody tr:hover { background: var(--surface-raised); }
+
+/* Use primary petrol blue for selected navigation and primary controls. */
+:root[data-theme="light"] .capital-portfolio-wrapper .project-section-sidebar nav a[aria-current],
+:root[data-theme="light"] .capital-portfolio-wrapper .milestone-step.is-selected {
+  background: color-mix(in srgb, var(--primary) 11%, transparent);
+  color: var(--primary);
+}

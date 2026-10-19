@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BarChart2, MessageSquare } from "lucide-react";
+import { BarChart2, MessageSquare, Moon, Sun } from "lucide-react";
 import ChatPage from "./ChatPage.jsx";
 import AccountPage from "./AccountPage.jsx";
 import ProjectsPage from "./ProjectsPage.jsx";
@@ -16,14 +16,27 @@ function getInitialPage() {
   return "chat";
 }
 
+function getInitialTheme() {
+  if (typeof window === "undefined") return "dark";
+  const savedTheme = window.localStorage.getItem("theme");
+  if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
 function App() {
   const [activePage, setActivePage] = useState(getInitialPage);
+  const [theme, setTheme] = useState(getInitialTheme);
 
   useEffect(() => {
     const syncPageFromPath = () => setActivePage(getInitialPage());
     window.addEventListener("popstate", syncPageFromPath);
     return () => window.removeEventListener("popstate", syncPageFromPath);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    window.localStorage.setItem("theme", theme);
+  }, [theme]);
 
   const handleSelectPage = (page) => {
     setActivePage(page);
@@ -33,7 +46,12 @@ function App() {
 
   return (
     <div className="app-shell">
-      <AppNavbar activePage={activePage} onSelectPage={handleSelectPage} />
+      <AppNavbar
+        activePage={activePage}
+        onSelectPage={handleSelectPage}
+        theme={theme}
+        onToggleTheme={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+      />
       <main className="page page-chat">
         {activePage === "projects" ? (
           <ProjectsPage />
@@ -47,7 +65,7 @@ function App() {
   );
 }
 
-function AppNavbar({ activePage, onSelectPage }) {
+function AppNavbar({ activePage, onSelectPage, theme, onToggleTheme }) {
   return (
     <header className="app-navbar" aria-label="Primary navigation">
       <div className="app-brand" aria-label="Project Engineer home">
@@ -74,15 +92,26 @@ function AppNavbar({ activePage, onSelectPage }) {
         </button>
       </nav>
 
-      <button
-        type="button"
-        className={`account-button ${activePage === "account" || activePage === "plugins" ? "active" : ""}`}
-        onClick={() => onSelectPage("account")}
-        aria-label="Account"
-      >
-        <span className="account-avatar" aria-hidden="true">JL</span>
-        <span>Account</span>
-      </button>
+      <div className="app-navbar-actions">
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={onToggleTheme}
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        >
+          {theme === "dark" ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+        </button>
+        <button
+          type="button"
+          className={`account-button ${activePage === "account" || activePage === "plugins" ? "active" : ""}`}
+          onClick={() => onSelectPage("account")}
+          aria-label="Account"
+        >
+          <span className="account-avatar" aria-hidden="true">JL</span>
+          <span>Account</span>
+        </button>
+      </div>
     </header>
   );
 }

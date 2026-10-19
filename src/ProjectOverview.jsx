@@ -1,111 +1,110 @@
 import React from "react";
-import { Tag, Progress } from "./ProjectTokens.jsx";
-import Rail from "./Rail.jsx";
-import { CostChart, CostOutlook } from "./CostAnalysis.jsx";
+import { Tag } from "./components/Tag.jsx";
+import { Progress } from "./components/Progress.jsx";
+import { CostOutlook } from "./CostAnalysis.jsx";
 import RiskControls from "./RiskSection.jsx";
-import ChangeOrderControls from "./ChangeOrderSection.jsx";
-import { Source } from "./components/Source.jsx";
+import { buildProjectOverview } from "./projectOverviewModel.js";
 import "./ProjectOverview.css";
 
-export function AttentionControls({ project }) {
-  const task = (project.tasks && project.tasks.find((item) => item.status === "In progress")) || project.tasks?.[0] || { id: "TSK-101", owner: "Project lead" };
-  const items = [
-    [
-      "Change approval",
-      "Review revised installation scope",
-      "Commercial lead",
-      "15 Sep",
-      "Pending",
-      "Client email: please assess the revised scope and submit the cost and schedule impact before approval.",
-    ],
-    [
-      "Technical query",
-      "Confirm drawing revision before release",
-      task?.owner || "Piping lead",
-      "10 Sep",
-      "Overdue",
-      `Engineering message: confirm the approved drawing revision for ${task?.id || "TSK-101"} before releasing the work package.`,
-    ],
-    [
-      "Safety review",
-      "Close outstanding hazard-review action",
-      "Process safety lead",
-      "11 Sep",
-      "Overdue",
-      "Review minutes: submit the outstanding hazard assessment evidence for authorised review before the readiness gate.",
-    ],
-  ];
+const formatVariance = (value) => `${value > 0 ? "+" : ""}$${value.toFixed(1)}M`;
+
+export function AttentionControls({ overview }) {
+  const items       = overview.notifications;
+  const actionCount = items.filter((i) => i.actionRequired).length;
 
   return (
-    <section className="control-section">
+    <section className="panel overview-notifications">
       <div className="section-head">
-        <h2>Needs attention</h2>
-        <span>3 decisions · 2 overdue</span>
+        <div>
+          <h2>Needs attention</h2>
+          <p>Active risks, pending requests, and project updates requiring action.</p>
+        </div>
+        {actionCount > 0 && (
+          <span className="attn-action-badge">{actionCount} need action</span>
+        )}
       </div>
-      {items.map(([type, title, owner, due, status, body]) => (
-        <article className="control-card" key={type}>
-          <div className="control-item">
-            <div>
-              <span className="control-label">{type}</span>
-              <h3>{title}</h3>
-              <p>
-                {owner} · Due {due} 2026
-              </p>
+
+      <div className="attn-feed">
+        {items.length === 0 && (
+          <p className="notification-empty">No items need attention.</p>
+        )}
+        {items.map((item) => (
+          <article className="attn-feed-row" key={item.id}>
+            <div className={`attn-dot attn-dot-${item.dotColor}`} />
+
+            <div className="attn-feed-body">
+              <div className="attn-feed-top">
+                <span className={`attn-type-badge attn-type-${item.dotColor}`}>
+                  {item.type}
+                </span>
+                <span className="attn-feed-title">{item.title}</span>
+              </div>
+              <div className="attn-feed-meta">
+                <span>{item.owner}</span>
+                {item.source && (
+                  <span className="attn-meta-sep">{item.source}</span>
+                )}
+                {item.due && (
+                  <span className="attn-meta-sep">{item.due}</span>
+                )}
+              </div>
             </div>
-            <div className="control-tag-stack">
-              <span className={`control-status ${status === "Overdue" ? "is-late" : ""}`}>
-                {status}
-              </span>
-            </div>
-          </div>
-          <Source project={project} title={title} sender={owner} body={body} />
-        </article>
-      ))}
+
+            {item.actionRequired && (
+              <span className="attn-action-pill">Review</span>
+            )}
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
 
-/**
- * ProjectOverview
- * Calls and composes the Overview view from separate modules:
- * - Header with Project ID, Phase Tag, and Overall Progress
- * - Progression Rail (from Rail.jsx)
- * - Cost Chart (from CostAnalysis.jsx)
- * - Attention Controls (Needs attention)
- * - Risk Controls (from RiskSection.jsx)
- */
-export function ProjectOverview({ project, onExploreMore }) {
+export function ProjectOverview({ project }) {
+  const overview = buildProjectOverview(project);
+  const days = overview.daysToMilestone;
+
   return (
     <div className="project-overview-content">
-      <div className="detail-heading">
+      <div className="section-page-header">
         <div>
           <div className="title-line">
-            <span>{project.id}</span>
-            <Tag type="warm-gray" size="sm">
-              {project.phase}
-            </Tag>
+            <span className="technical-id">{project.id}</span>
+            <Tag type="warm-gray" size="sm">{project.phase}</Tag>
           </div>
           <h1>{project.name}</h1>
         </div>
-        <div className="detail-progress">
-          <strong>{project.progress}%</strong>
-          <span>Overall progress</span>
-          <Progress value={project.progress} label={false} />
-        </div>
       </div>
 
-      <Rail project={project} />
-      <CostChart project={project} onExploreMore={onExploreMore} />
-      <AttentionControls project={project} />
+      <section className="panel current-phase-lead" aria-label="Current phase summary">
+        <div className="phase-verdict">
+          <span>Current phase</span>
+          <strong>{overview.phase}</strong>
+        </div>
+        <div className="health-metrics">
+          <div><span>Progress</span><strong>{overview.progress}%</strong><Progress value={overview.progress} label={false} /></div>
+          <div><span>Cost variance</span><strong className={overview.costVariance < 0 ? "is-negative" : ""}>{formatVariance(overview.costVariance)}</strong></div>
+          <div><span>Open risks</span><strong>{overview.openRiskCount}</strong></div>
+          <div><span>Overdue actions</span><strong>{overview.overdueCount}</strong></div>
+        </div>
+      </section>
+
+      <section className="panel current-milestone-summary" aria-label="Current milestone">
+        <div>
+          <span className="summary-label">Current milestone</span>
+          <h2>{overview.currentMilestone?.name || "No active milestone"}</h2>
+        </div>
+        <div>
+          <span className="summary-label">Time remaining</span>
+          <strong>{days == null ? "Not set" : days < 0 ? `${Math.abs(days)} days late` : `${days} days`}</strong>
+        </div>
+      </section>
+
+      <AttentionControls overview={overview} />
     </div>
   );
 }
 
-// Re-exports for modular backwards-compatibility
-export {
-  RiskControls,
-  ChangeOrderControls,
-  CostOutlook,
-};
+export { RiskControls, CostOutlook };
 
 export default ProjectOverview;

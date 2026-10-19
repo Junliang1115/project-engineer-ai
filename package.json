@@ -2,8 +2,9 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "test": "node ./tests/project-smoke.test.mjs && node ./tests/milestone-active.test.mjs"
+    "test": "node ./tests/frontend.test.mjs"
   },
+  "type": "module",
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
     "lucide-react": "^0.468.0",

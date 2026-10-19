@@ -114,7 +114,7 @@ export default function AccountPage() {
               <span className="meta-separator">•</span>
               <span>Workspace Admin</span>
               <span className="meta-separator">•</span>
-              <span className="account-id-chip">EMP-8842</span>
+              <span className="account-id-chip technical-id">EMP-8842</span>
             </p>
           </div>
         </div>

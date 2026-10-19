@@ -5,9 +5,11 @@ import {
   Building2 as Buildings,
   Layers,
   RotateCw,
-  Search as MagnifyingGlass,
 } from "lucide-react";
-import { Tag, Button, Progress } from "./ProjectTokens.jsx";
+import { Tag } from "./components/Tag.jsx";
+import { Button } from "./components/Button.jsx";
+import { Progress } from "./components/Progress.jsx";
+import { SearchBar } from "./components/SearchBar.jsx";
 
 export function LoadingState() {
   return (
@@ -176,15 +178,13 @@ export function ProjectsList({ projects, onSelectProject, onRefreshProjects, las
             {activeFilter === "high-risk" && " · High Risk"}
           </span>
         </div>
-        <label className="search">
-          <MagnifyingGlass size={17} />
-          <span className="sr-only">Search projects</span>
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search project, phase, or ID"
-          />
-        </label>
+        <SearchBar
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onClear={() => setQuery("")}
+          placeholder="Search project, phase, or ID"
+          ariaLabel="Search projects"
+        />
       </div>
 
       {filtered.length ? (
@@ -208,7 +208,7 @@ export function ProjectsList({ projects, onSelectProject, onRefreshProjects, las
                 aria-label={`Open Project: ${project.name}`}
               >
                 <div className="card-top">
-                  <span className="project-id">{project.id}</span>
+                  <span className="project-id technical-id">{project.id}</span>
                   <Tag type="warm-gray" size="sm">
                     {project.phase}
                   </Tag>
