@@ -77,8 +77,23 @@ backend/.sharepoint_token_cache.json
 downloads/
 backend/downloads/
 
+# Stored request documents (PDFs saved by backend/documents/document_store.py)
+public/request/*
+
 *.drawio
 
 # Antigravity IDE custom agent configs & skills
 .agents/
+
+# Local AI assistant files
+CLAUDE.md
+.claude/
+.superpowers/
+
+# Local package-manager cache
+.pnpm-store/
+
+# Draw.io recovery files
+*.drawio.crswap
+docs
 

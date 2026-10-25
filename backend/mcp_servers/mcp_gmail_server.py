@@ -18,9 +18,9 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
 try:
-    from backend.gmail_service import GmailError, GmailService
+    from backend.integrations.gmail_service import GmailError, GmailService
 except ImportError:
-    from gmail_service import GmailError, GmailService
+    from integrations.gmail_service import GmailError, GmailService
 
 server = MCPServer("project-engineer-gmail")
 _service: GmailService | None = None

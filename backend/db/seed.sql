@@ -62,18 +62,19 @@ insert into project (
   'active'
 ) on conflict (id) do nothing;
 
-insert into project_phase (project_id, name, phase_order, status, start_date, end_date, progress_percent)
+insert into project_phase (phase_id, project_id, name, phase_order, status, start_date, end_date, progress_percent)
 values
-  ('PRJ-2401', 'Concept', 1, 'complete', '2025-06-01', '2025-09-30', 100),
-  ('PRJ-2401', 'Feasibility', 2, 'complete', '2025-10-01', '2025-12-31', 100),
-  ('PRJ-2401', 'Design', 3, 'complete', '2026-01-05', '2026-03-30', 100),
-  ('PRJ-2401', 'Procurement', 4, 'complete', '2026-03-15', '2026-06-30', 100),
-  ('PRJ-2401', 'Construction', 5, 'active', '2026-07-01', '2026-11-15', 58),
-  ('PRJ-2401', 'Handover', 6, 'planned', '2026-11-16', '2027-01-20', 30)
+  ('P-01', 'PRJ-2401', 'Concept', 1, 'completed', '2025-06-01', '2025-09-30', 100),
+  ('P-02', 'PRJ-2401', 'Feasibility', 2, 'completed', '2025-10-01', '2025-12-31', 100),
+  ('P-03', 'PRJ-2401', 'Design', 3, 'completed', '2026-01-05', '2026-03-30', 100),
+  ('P-04', 'PRJ-2401', 'Procurement', 4, 'completed', '2026-03-15', '2026-06-30', 100),
+  ('P-05', 'PRJ-2401', 'Construction', 5, 'active', '2026-07-01', '2026-11-15', 58),
+  ('P-06', 'PRJ-2401', 'Handover', 6, 'planned', '2026-11-16', '2027-01-20', 30)
 on conflict (project_id, name) do nothing;
 
-insert into milestone (project_id, phase_id, milestone_name, due_date, status, progress_percent, planned_amount, actual_amount)
+insert into milestone (milestone_id, project_id, phase_id, milestone_name, due_date, status, progress_percent, planned_amount, actual_amount)
 select
+  m.milestone_id,
   'PRJ-2401',
   pp.phase_id,
   m.milestone_name,
@@ -84,16 +85,16 @@ select
   m.actual_amount
 from (
   values
-    ('Concept', 'M-C01 Concept Alignment & Scoping', '2025-09-30', 'complete', 100, 8000000.00, 7800000.00),
-    ('Feasibility', 'M-F01 Geotechnical Survey & EIA Clearance', '2025-12-31', 'complete', 100, 14000000.00, 14200000.00),
-    ('Design', 'M-D01 Detailed Engineering & BIM LOD 350 Release', '2026-03-30', 'complete', 100, 24000000.00, 26500000.00),
-    ('Procurement', 'M-P01 Long-lead Equipment & Structural Steel Award', '2026-06-30', 'complete', 100, 42000000.00, 44100000.00),
-    ('Construction', 'M-01 Substructure & Foundation Release', '2026-08-14', 'complete', 100, 8400000.00, 8200000.00),
-    ('Construction', 'M-02 Envelope & MEP Rough-in Release', '2026-09-18', 'active', 75, 14200000.00, 15100000.00),
-    ('Construction', 'M-04 Work package release', '2026-09-30', 'active', 58, 9600000.00, 9400000.00),
-    ('Construction', 'M-05 Life Safety & Commissioning Readiness', '2026-10-22', 'blocked', 20, 11000000.00, 4100000.00),
-    ('Handover', 'M-H01 Operational Readiness & Statutory Handover', '2027-01-20', 'planned', 30, 8000000.00, 2400000.00)
-) as m(phase_name, milestone_name, due_date, status, progress_percent, planned_amount, actual_amount)
+    ('M-001', 'Concept', 'M-C01 Concept Alignment & Scoping', '2025-09-30', 'completed', 100, 8000000.00, 7800000.00),
+    ('M-002', 'Feasibility', 'M-F01 Geotechnical Survey & EIA Clearance', '2025-12-31', 'completed', 100, 14000000.00, 14200000.00),
+    ('M-003', 'Design', 'M-D01 Detailed Engineering & BIM LOD 350 Release', '2026-03-30', 'completed', 100, 24000000.00, 26500000.00),
+    ('M-004', 'Procurement', 'M-P01 Long-lead Equipment & Structural Steel Award', '2026-06-30', 'completed', 100, 42000000.00, 44100000.00),
+    ('M-005', 'Construction', 'M-01 Substructure & Foundation Release', '2026-08-14', 'completed', 100, 8400000.00, 8200000.00),
+    ('M-006', 'Construction', 'M-02 Envelope & MEP Rough-in Release', '2026-09-18', 'in_progress', 75, 14200000.00, 15100000.00),
+    ('M-007', 'Construction', 'M-04 Work package release', '2026-09-30', 'in_progress', 58, 9600000.00, 9400000.00),
+    ('M-008', 'Construction', 'M-05 Life Safety & Commissioning Readiness', '2026-10-22', 'blocked', 20, 11000000.00, 4100000.00),
+    ('M-009', 'Handover', 'M-H01 Operational Readiness & Statutory Handover', '2027-01-20', 'planned', 30, 8000000.00, 2400000.00)
+) as m(milestone_id, phase_name, milestone_name, due_date, status, progress_percent, planned_amount, actual_amount)
 join project_phase pp on pp.project_id = 'PRJ-2401' and pp.name = m.phase_name
 on conflict (project_id, milestone_name) do update
 set status = excluded.status,
@@ -118,41 +119,41 @@ select
   t.cost_actual
 from (
   values
-    ('TSK-100A', 'M-F01 Geotechnical Survey & EIA Clearance', 'Geotechnical seabed core drilling & foundation survey', 'Geotechnical', 'Survey consultant', 'complete', 'high', '2025-10-01', '2025-11-10', 4200000.00, 4100000.00),
-    ('TSK-100B', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'BIM LOD 350 structural 4D model & MEP clash detection', 'Design', 'Lead architect', 'complete', 'high', '2026-01-10', '2026-03-15', 11000000.00, 11500000.00),
-    ('TSK-100C', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Long-lead HVAC chillers & curtain wall procurement', 'Procurement', 'Supply chain lead', 'complete', 'high', '2026-03-20', '2026-06-20', 18000000.00, 18800000.00),
-    ('TSK-101', 'M-01 Substructure & Foundation Release', 'Structural concrete & foundation slab inspection', 'Structural', 'Civil delivery team', 'complete', 'medium', '2026-07-01', '2026-08-14', 8400000.00, 8200000.00),
+    ('TSK-100A', 'M-F01 Geotechnical Survey & EIA Clearance', 'Geotechnical seabed core drilling & foundation survey', 'Geotechnical', 'Survey consultant', 'completed', 'high', '2025-10-01', '2025-11-10', 4200000.00, 4100000.00),
+    ('TSK-100B', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'BIM LOD 350 structural 4D model & MEP clash detection', 'Design', 'Lead architect', 'completed', 'high', '2026-01-10', '2026-03-15', 11000000.00, 11500000.00),
+    ('TSK-100C', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Long-lead HVAC chillers & curtain wall procurement', 'Procurement', 'Supply chain lead', 'completed', 'high', '2026-03-20', '2026-06-20', 18000000.00, 18800000.00),
+    ('TSK-101', 'M-01 Substructure & Foundation Release', 'Structural concrete & foundation slab inspection', 'Structural', 'Civil delivery team', 'completed', 'medium', '2026-07-01', '2026-08-14', 8400000.00, 8200000.00),
     ('TSK-102', 'M-02 Envelope & MEP Rough-in Release', 'Facade curtain wall sequencing and MEP rough-in', 'Facade', 'Envelope package team', 'in_progress', 'high', '2026-08-01', '2026-09-18', 14200000.00, 15100000.00),
     ('TSK-103', 'M-04 Work package release', 'Primary HVAC chiller and pump installation', 'MEP Services', 'Mechanical lead', 'in_progress', 'high', '2026-07-01', '2026-09-24', 9600000.00, 9400000.00),
     ('TSK-104', 'M-05 Life Safety & Commissioning Readiness', 'Fire safety suppression & smoke damper certification', 'Life Safety', 'Compliance review', 'blocked', 'high', '2026-09-01', '2026-10-22', 3800000.00, 4100000.00),
-    ('TSK-105', 'M-05 Life Safety & Commissioning Readiness', 'Architectural finishes & concourse flooring', 'Architectural', 'Finishes contractor', 'not_started', 'medium', '2026-10-01', '2026-11-15', 7200000.00, 0.00),
+    ('TSK-105', 'M-05 Life Safety & Commissioning Readiness', 'Architectural finishes & concourse flooring', 'Architectural', 'Finishes contractor', 'planned', 'medium', '2026-10-01', '2026-11-15', 7200000.00, 0.00),
     ('TSK-106', 'M-H01 Operational Readiness & Statutory Handover', 'BMS integrated controls & SCADA commissioning', 'Commissioning', 'Systems integration lead', 'planned', 'medium', '2026-11-20', '2026-12-05', 3200000.00, 1200000.00),
     ('TSK-107', 'M-H01 Operational Readiness & Statutory Handover', 'Statutory fire authority witness & acoustic sign-off', 'Life Safety', 'QA/QC authority liaison', 'planned', 'high', '2026-12-01', '2026-12-20', 2400000.00, 800000.00),
     ('TSK-108', 'M-H01 Operational Readiness & Statutory Handover', 'Digital twin asset register & operations handover', 'Handover', 'Digital delivery manager', 'planned', 'medium', '2026-12-15', '2027-01-10', 1800000.00, 400000.00),
-    ('TSK-C01', 'M-C01 Concept Alignment & Scoping', 'Confirm project objectives and operational requirements', 'Project Controls', 'Project manager', 'complete', 'high', '2025-06-01', '2025-06-20', 250000.00, 240000.00),
-    ('TSK-C02', 'M-C01 Concept Alignment & Scoping', 'Develop concept options and evaluation criteria', 'Engineering', 'Engineering manager', 'complete', 'high', '2025-06-15', '2025-07-31', 480000.00, 465000.00),
-    ('TSK-C03', 'M-C01 Concept Alignment & Scoping', 'Complete preliminary cost and schedule estimate', 'Cost & Planning', 'Project controls lead', 'complete', 'medium', '2025-07-15', '2025-08-31', 180000.00, 175000.00),
-    ('TSK-C04', 'M-C01 Concept Alignment & Scoping', 'Approve concept scope and project execution strategy', 'Governance', 'Project sponsor', 'complete', 'high', '2025-09-01', '2025-09-30', 90000.00, 85000.00),
-    ('TSK-F01', 'M-F01 Geotechnical Survey & EIA Clearance', 'Complete environmental baseline and impact assessment', 'Environmental', 'Environmental consultant', 'complete', 'high', '2025-10-01', '2025-11-25', 1850000.00, 1920000.00),
-    ('TSK-F02', 'M-F01 Geotechnical Survey & EIA Clearance', 'Verify utility interfaces and site access constraints', 'Civil', 'Interface manager', 'complete', 'medium', '2025-10-15', '2025-12-05', 620000.00, 600000.00),
-    ('TSK-F03', 'M-F01 Geotechnical Survey & EIA Clearance', 'Issue feasibility report and risk-adjusted estimate', 'Project Controls', 'Planning manager', 'complete', 'high', '2025-11-15', '2025-12-31', 310000.00, 325000.00),
-    ('TSK-D01', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'Freeze design basis and discipline design criteria', 'Engineering', 'Engineering manager', 'complete', 'high', '2026-01-05', '2026-01-31', 780000.00, 800000.00),
-    ('TSK-D02', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'Close interdisciplinary model review comments', 'BIM Coordination', 'BIM manager', 'complete', 'high', '2026-02-01', '2026-03-10', 1450000.00, 1510000.00),
-    ('TSK-D03', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'Approve issued-for-construction drawing package', 'Design Assurance', 'Lead engineer', 'complete', 'high', '2026-03-01', '2026-03-30', 920000.00, 960000.00),
-    ('TSK-P01', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Issue technical bid evaluation for long-lead equipment', 'Procurement', 'Package engineer', 'complete', 'high', '2026-03-15', '2026-04-20', 240000.00, 230000.00),
-    ('TSK-P02', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Complete vendor document and quality-plan review', 'Supplier Quality', 'Vendor quality lead', 'complete', 'medium', '2026-04-15', '2026-05-31', 360000.00, 375000.00),
-    ('TSK-P03', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Release fabrication and confirm delivery schedule', 'Supply Chain', 'Procurement manager', 'complete', 'high', '2026-05-15', '2026-06-30', 190000.00, 205000.00),
-    ('TSK-101A', 'M-01 Substructure & Foundation Release', 'Complete piling integrity and load testing', 'Geotechnical', 'Geotechnical lead', 'complete', 'high', '2026-07-01', '2026-07-25', 1250000.00, 1210000.00),
-    ('TSK-101B', 'M-01 Substructure & Foundation Release', 'Approve reinforcement and embedded-items inspection', 'Structural', 'QA/QC inspector', 'complete', 'high', '2026-07-20', '2026-08-05', 420000.00, 405000.00),
-    ('TSK-101C', 'M-01 Substructure & Foundation Release', 'Close foundation survey and as-built records', 'Survey', 'Survey manager', 'complete', 'medium', '2026-08-01', '2026-08-14', 180000.00, 175000.00),
-    ('TSK-102A', 'M-02 Envelope & MEP Rough-in Release', 'Complete facade anchor pull-out testing', 'Facade', 'Facade QA lead', 'complete', 'high', '2026-08-01', '2026-08-28', 540000.00, 565000.00),
+    ('TSK-C01', 'M-C01 Concept Alignment & Scoping', 'Confirm project objectives and operational requirements', 'Project Controls', 'Project manager', 'completed', 'high', '2025-06-01', '2025-06-20', 250000.00, 240000.00),
+    ('TSK-C02', 'M-C01 Concept Alignment & Scoping', 'Develop concept options and evaluation criteria', 'Engineering', 'Engineering manager', 'completed', 'high', '2025-06-15', '2025-07-31', 480000.00, 465000.00),
+    ('TSK-C03', 'M-C01 Concept Alignment & Scoping', 'Complete preliminary cost and schedule estimate', 'Cost & Planning', 'Project controls lead', 'completed', 'medium', '2025-07-15', '2025-08-31', 180000.00, 175000.00),
+    ('TSK-C04', 'M-C01 Concept Alignment & Scoping', 'Approve concept scope and project execution strategy', 'Governance', 'Project sponsor', 'completed', 'high', '2025-09-01', '2025-09-30', 90000.00, 85000.00),
+    ('TSK-F01', 'M-F01 Geotechnical Survey & EIA Clearance', 'Complete environmental baseline and impact assessment', 'Environmental', 'Environmental consultant', 'completed', 'high', '2025-10-01', '2025-11-25', 1850000.00, 1920000.00),
+    ('TSK-F02', 'M-F01 Geotechnical Survey & EIA Clearance', 'Verify utility interfaces and site access constraints', 'Civil', 'Interface manager', 'completed', 'medium', '2025-10-15', '2025-12-05', 620000.00, 600000.00),
+    ('TSK-F03', 'M-F01 Geotechnical Survey & EIA Clearance', 'Issue feasibility report and risk-adjusted estimate', 'Project Controls', 'Planning manager', 'completed', 'high', '2025-11-15', '2025-12-31', 310000.00, 325000.00),
+    ('TSK-D01', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'Freeze design basis and discipline design criteria', 'Engineering', 'Engineering manager', 'completed', 'high', '2026-01-05', '2026-01-31', 780000.00, 800000.00),
+    ('TSK-D02', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'Close interdisciplinary model review comments', 'BIM Coordination', 'BIM manager', 'completed', 'high', '2026-02-01', '2026-03-10', 1450000.00, 1510000.00),
+    ('TSK-D03', 'M-D01 Detailed Engineering & BIM LOD 350 Release', 'Approve issued-for-construction drawing package', 'Design Assurance', 'Lead engineer', 'completed', 'high', '2026-03-01', '2026-03-30', 920000.00, 960000.00),
+    ('TSK-P01', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Issue technical bid evaluation for long-lead equipment', 'Procurement', 'Package engineer', 'completed', 'high', '2026-03-15', '2026-04-20', 240000.00, 230000.00),
+    ('TSK-P02', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Complete vendor document and quality-plan review', 'Supplier Quality', 'Vendor quality lead', 'completed', 'medium', '2026-04-15', '2026-05-31', 360000.00, 375000.00),
+    ('TSK-P03', 'M-P01 Long-lead Equipment & Structural Steel Award', 'Release fabrication and confirm delivery schedule', 'Supply Chain', 'Procurement manager', 'completed', 'high', '2026-05-15', '2026-06-30', 190000.00, 205000.00),
+    ('TSK-101A', 'M-01 Substructure & Foundation Release', 'Complete piling integrity and load testing', 'Geotechnical', 'Geotechnical lead', 'completed', 'high', '2026-07-01', '2026-07-25', 1250000.00, 1210000.00),
+    ('TSK-101B', 'M-01 Substructure & Foundation Release', 'Approve reinforcement and embedded-items inspection', 'Structural', 'QA/QC inspector', 'completed', 'high', '2026-07-20', '2026-08-05', 420000.00, 405000.00),
+    ('TSK-101C', 'M-01 Substructure & Foundation Release', 'Close foundation survey and as-built records', 'Survey', 'Survey manager', 'completed', 'medium', '2026-08-01', '2026-08-14', 180000.00, 175000.00),
+    ('TSK-102A', 'M-02 Envelope & MEP Rough-in Release', 'Complete facade anchor pull-out testing', 'Facade', 'Facade QA lead', 'completed', 'high', '2026-08-01', '2026-08-28', 540000.00, 565000.00),
     ('TSK-102B', 'M-02 Envelope & MEP Rough-in Release', 'Close MEP ceiling-zone clash actions', 'BIM Coordination', 'MEP coordinator', 'in_progress', 'high', '2026-08-10', '2026-09-12', 680000.00, 710000.00),
     ('TSK-102C', 'M-02 Envelope & MEP Rough-in Release', 'Inspect firestopping at service penetrations', 'Life Safety', 'Fire engineer', 'in_progress', 'high', '2026-09-01', '2026-09-18', 310000.00, 260000.00),
-    ('TSK-103A', 'M-04 Work package release', 'Approve HVAC equipment installation method statement', 'Mechanical', 'Construction manager', 'complete', 'high', '2026-07-01', '2026-07-20', 120000.00, 115000.00),
+    ('TSK-103A', 'M-04 Work package release', 'Approve HVAC equipment installation method statement', 'Mechanical', 'Construction manager', 'completed', 'high', '2026-07-01', '2026-07-20', 120000.00, 115000.00),
     ('TSK-103B', 'M-04 Work package release', 'Complete chilled-water pipe pressure testing', 'Mechanical', 'Mechanical QA lead', 'in_progress', 'high', '2026-08-15', '2026-09-26', 460000.00, 390000.00),
     ('TSK-103C', 'M-04 Work package release', 'Release electrical power and controls interfaces', 'Electrical', 'Electrical lead', 'in_progress', 'medium', '2026-09-01', '2026-09-30', 280000.00, 210000.00),
     ('TSK-104A', 'M-05 Life Safety & Commissioning Readiness', 'Complete cause-and-effect testing for fire systems', 'Life Safety', 'Commissioning lead', 'blocked', 'high', '2026-09-20', '2026-10-18', 620000.00, 210000.00),
-    ('TSK-104B', 'M-05 Life Safety & Commissioning Readiness', 'Close commissioning punch-list category A items', 'Commissioning', 'QA/QC manager', 'not_started', 'high', '2026-10-05', '2026-10-22', 350000.00, 0.00),
+    ('TSK-104B', 'M-05 Life Safety & Commissioning Readiness', 'Close commissioning punch-list category A items', 'Commissioning', 'QA/QC manager', 'planned', 'high', '2026-10-05', '2026-10-22', 350000.00, 0.00),
     ('TSK-H01', 'M-H01 Operational Readiness & Statutory Handover', 'Complete operator training and competency sign-off', 'Operations Readiness', 'Operations manager', 'planned', 'high', '2026-12-10', '2027-01-15', 650000.00, 0.00)
 ) as t(task_id, milestone_name, task_name, discipline, owner, status, priority, planned_start_date, planned_end_date, cost_estimate, cost_actual)
 join milestone m on m.project_id = 'PRJ-2401' and m.milestone_name = t.milestone_name
@@ -173,7 +174,7 @@ insert into expenditure (
   estimated_amount, actual_amount, status, expenditure_date
 )
 select
-  md5(e.code)::uuid,
+  e.expenditure_id,
   'PRJ-2401',
   pp.phase_id,
   e.title,
@@ -185,39 +186,39 @@ select
   e.expenditure_date::date
 from (
   values
-    ('EXP-C01', 'Concept', 'Topographical LIDAR scans & utility mapping', 'Subcontractors', 'Apex Geospatial Ltd', 1800000.00, 1700000.00, 'incurred', '2025-09-30'),
-    ('EXP-C02', 'Concept', 'Concept architectural massing & 3D scale models', 'Materials', 'KPF Design Partners', 1200000.00, 1200000.00, 'incurred', '2025-09-30'),
-    ('EXP-C03', 'Concept', 'Lead design architects & structural directors payroll', 'Salaries & Labor', 'In-house Core Engineering', 2600000.00, 2500000.00, 'incurred', '2025-09-30'),
-    ('EXP-C04', 'Concept', 'Geotechnical testing rig & mobile sonic sounders lease', 'Equipment & Plant', 'Geotech Instruments Corp', 1300000.00, 1200000.00, 'incurred', '2025-09-30'),
-    ('EXP-C05', 'Concept', 'Municipal zoning appraisal & pre-planning permit fees', 'Permits & Fees', 'City Development Authority', 1200000.00, 1200000.00, 'incurred', '2025-09-30'),
-    ('EXP-F01', 'Feasibility', 'Borehole exploratory drilling & geotechnical core sampling', 'Subcontractors', 'Civic Ground Engineering', 3600000.00, 3700000.00, 'incurred', '2025-12-31'),
-    ('EXP-F02', 'Feasibility', 'Core sample casings, bentonite slurry & field consumables', 'Materials', 'GeoSupply Industrial', 2000000.00, 2000000.00, 'incurred', '2025-12-31'),
-    ('EXP-F03', 'Feasibility', 'Senior geotechnical analysts & cost QS team salaries', 'Salaries & Labor', 'In-house Project Controls', 3900000.00, 4000000.00, 'incurred', '2025-12-31'),
-    ('EXP-F04', 'Feasibility', 'Hydraulic rotary drill rig & soil press equipment rental', 'Equipment & Plant', 'HeavyHire International', 2500000.00, 2600000.00, 'incurred', '2025-12-31'),
-    ('EXP-F05', 'Feasibility', 'Environmental impact statutory filing & planning clearances', 'Permits & Fees', 'Metropolitan Planning Bureau', 2000000.00, 2000000.00, 'incurred', '2025-12-31'),
-    ('EXP-D01', 'Design', 'Acoustic mockups, thermal glass & cladding test specimens', 'Materials', 'Saint-Gobain Architectural', 4300000.00, 4800000.00, 'incurred', '2026-03-30'),
-    ('EXP-D02', 'Design', 'BIM coordinators, structural engineers & MEP staff payroll', 'Salaries & Labor', 'Foster & Partners Engineering', 8200000.00, 9000000.00, 'incurred', '2026-03-30'),
-    ('EXP-D03', 'Design', 'Specialist boundary-layer wind tunnel testing contract', 'Subcontractors', 'RWDI Wind Engineers', 5800000.00, 6400000.00, 'incurred', '2026-03-30'),
-    ('EXP-D04', 'Design', 'High-spec BIM modeling workstations & 3D scanner rentals', 'Equipment & Plant', 'TechLease Infrastructure', 2900000.00, 3200000.00, 'incurred', '2026-03-30'),
-    ('EXP-D05', 'Design', 'Professional Engineer stamp certifications & building licenses', 'Permits & Fees', 'State Board of Engineers & City Licensing', 2900000.00, 3200000.00, 'incurred', '2026-03-30'),
-    ('EXP-P01', 'Procurement', 'Structural steel mill order & rebar reinforcement supply', 'Materials', 'ArcelorMittal Industrial', 19300000.00, 20300000.00, 'incurred', '2026-06-30'),
-    ('EXP-P02', 'Procurement', 'Procurement buyers, supply chain expeditors & QA payroll', 'Salaries & Labor', 'Global Sourcing Team', 7600000.00, 7900000.00, 'incurred', '2026-06-30'),
-    ('EXP-P03', 'Procurement', 'International freight logistics forwarding & stevedoring', 'Subcontractors', 'Maersk Global Logistics', 6700000.00, 7100000.00, 'incurred', '2026-06-30'),
-    ('EXP-P04', 'Procurement', 'Dockside gantry cranes & heavy flatbed transporter leasing', 'Equipment & Plant', 'Port Equipment Services', 5000000.00, 5300000.00, 'incurred', '2026-06-30'),
-    ('EXP-P05', 'Procurement', 'Customs import duty tariffs & marine cargo insurance bonds', 'Permits & Fees', 'Customs Bureau & Lloyd''s Syndicate', 3400000.00, 3500000.00, 'incurred', '2026-06-30'),
-    ('EXP-C10', 'Construction', 'High-strength C50 ready-mix concrete, rebar & structural steel', 'Materials', 'Titan Concrete & Steel Solutions', 16400000.00, 14000000.00, 'incurred', '2026-10-16'),
-    ('EXP-C11', 'Construction', 'Site superintendents, safety engineers & trade crews payroll', 'Salaries & Labor', 'Direct Site Operations Payroll', 9500000.00, 8100000.00, 'incurred', '2026-10-16'),
-    ('EXP-C12', 'Construction', 'Deep substructure excavation & diaphragm wall trade contract', 'Subcontractors', 'Keller Foundation Systems', 8600000.00, 7400000.00, 'incurred', '2026-10-16'),
-    ('EXP-C13', 'Construction', 'Twin luffing-jib tower cranes & concrete boom pumps rental', 'Equipment & Plant', 'Select Plant Hire Ltd', 6000000.00, 5200000.00, 'incurred', '2026-10-16'),
-    ('EXP-C14', 'Construction', 'Municipal street closure, heavy-haul permits & environmental monitoring', 'Permits & Fees', 'Department of Transportation & EPA', 2600000.00, 2200000.00, 'incurred', '2026-10-16'),
-    ('EXP-H01', 'Handover', 'Final architectural touch-up finishes, hardware & wayfinding signs', 'Materials', 'Apex Interior Elements', 1200000.00, 400000.00, 'incurred', '2027-01-20'),
-    ('EXP-H02', 'Handover', 'Closeout managers, QA/QC punchlist engineers & facilities team salaries', 'Salaries & Labor', 'Project Handover Management', 2000000.00, 600000.00, 'incurred', '2027-01-20'),
-    ('EXP-H03', 'Handover', 'Testing, Adjusting & Balancing mechanical commissioning', 'Subcontractors', 'National Commissioning Bureau', 2600000.00, 800000.00, 'incurred', '2027-01-20'),
-    ('EXP-H04', 'Handover', 'Thermal imaging cameras, airflow meters & load bank rentals', 'Equipment & Plant', 'Instrument Hire Co', 1100000.00, 300000.00, 'incurred', '2027-01-20'),
-    ('EXP-H05', 'Handover', 'Certificate of Occupancy statutory approvals & fire marshal stamps', 'Permits & Fees', 'Bureau Veritas & Municipal Fire Dept', 1100000.00, 300000.00, 'incurred', '2027-01-20')
-) as e(code, phase_name, title, category, vendor, estimated_amount, actual_amount, status, expenditure_date)
+    ('EXP-001', 'Concept', 'Topographical LIDAR scans & utility mapping', 'Subcontractors', 'Apex Geospatial Ltd', 1800000.00, 1700000.00, 'incurred', '2025-09-30'),
+    ('EXP-002', 'Concept', 'Concept architectural massing & 3D scale models', 'Materials', 'KPF Design Partners', 1200000.00, 1200000.00, 'incurred', '2025-09-30'),
+    ('EXP-003', 'Concept', 'Lead design architects & structural directors payroll', 'Salaries & Labor', 'In-house Core Engineering', 2600000.00, 2500000.00, 'incurred', '2025-09-30'),
+    ('EXP-004', 'Concept', 'Geotechnical testing rig & mobile sonic sounders lease', 'Equipment & Plant', 'Geotech Instruments Corp', 1300000.00, 1200000.00, 'incurred', '2025-09-30'),
+    ('EXP-005', 'Concept', 'Municipal zoning appraisal & pre-planning permit fees', 'Permits & Fees', 'City Development Authority', 1200000.00, 1200000.00, 'incurred', '2025-09-30'),
+    ('EXP-006', 'Feasibility', 'Borehole exploratory drilling & geotechnical core sampling', 'Subcontractors', 'Civic Ground Engineering', 3600000.00, 3700000.00, 'incurred', '2025-12-31'),
+    ('EXP-007', 'Feasibility', 'Core sample casings, bentonite slurry & field consumables', 'Materials', 'GeoSupply Industrial', 2000000.00, 2000000.00, 'incurred', '2025-12-31'),
+    ('EXP-008', 'Feasibility', 'Senior geotechnical analysts & cost QS team salaries', 'Salaries & Labor', 'In-house Project Controls', 3900000.00, 4000000.00, 'incurred', '2025-12-31'),
+    ('EXP-009', 'Feasibility', 'Hydraulic rotary drill rig & soil press equipment rental', 'Equipment & Plant', 'HeavyHire International', 2500000.00, 2600000.00, 'incurred', '2025-12-31'),
+    ('EXP-010', 'Feasibility', 'Environmental impact statutory filing & planning clearances', 'Permits & Fees', 'Metropolitan Planning Bureau', 2000000.00, 2000000.00, 'incurred', '2025-12-31'),
+    ('EXP-011', 'Design', 'Acoustic mockups, thermal glass & cladding test specimens', 'Materials', 'Saint-Gobain Architectural', 4300000.00, 4800000.00, 'incurred', '2026-03-30'),
+    ('EXP-012', 'Design', 'BIM coordinators, structural engineers & MEP staff payroll', 'Salaries & Labor', 'Foster & Partners Engineering', 8200000.00, 9000000.00, 'incurred', '2026-03-30'),
+    ('EXP-013', 'Design', 'Specialist boundary-layer wind tunnel testing contract', 'Subcontractors', 'RWDI Wind Engineers', 5800000.00, 6400000.00, 'incurred', '2026-03-30'),
+    ('EXP-014', 'Design', 'High-spec BIM modeling workstations & 3D scanner rentals', 'Equipment & Plant', 'TechLease Infrastructure', 2900000.00, 3200000.00, 'incurred', '2026-03-30'),
+    ('EXP-015', 'Design', 'Professional Engineer stamp certifications & building licenses', 'Permits & Fees', 'State Board of Engineers & City Licensing', 2900000.00, 3200000.00, 'incurred', '2026-03-30'),
+    ('EXP-016', 'Procurement', 'Structural steel mill order & rebar reinforcement supply', 'Materials', 'ArcelorMittal Industrial', 19300000.00, 20300000.00, 'incurred', '2026-06-30'),
+    ('EXP-017', 'Procurement', 'Procurement buyers, supply chain expeditors & QA payroll', 'Salaries & Labor', 'Global Sourcing Team', 7600000.00, 7900000.00, 'incurred', '2026-06-30'),
+    ('EXP-018', 'Procurement', 'International freight logistics forwarding & stevedoring', 'Subcontractors', 'Maersk Global Logistics', 6700000.00, 7100000.00, 'incurred', '2026-06-30'),
+    ('EXP-019', 'Procurement', 'Dockside gantry cranes & heavy flatbed transporter leasing', 'Equipment & Plant', 'Port Equipment Services', 5000000.00, 5300000.00, 'incurred', '2026-06-30'),
+    ('EXP-020', 'Procurement', 'Customs import duty tariffs & marine cargo insurance bonds', 'Permits & Fees', 'Customs Bureau & Lloyd''s Syndicate', 3400000.00, 3500000.00, 'incurred', '2026-06-30'),
+    ('EXP-021', 'Construction', 'High-strength C50 ready-mix concrete, rebar & structural steel', 'Materials', 'Titan Concrete & Steel Solutions', 16400000.00, 14000000.00, 'incurred', '2026-10-16'),
+    ('EXP-022', 'Construction', 'Site superintendents, safety engineers & trade crews payroll', 'Salaries & Labor', 'Direct Site Operations Payroll', 9500000.00, 8100000.00, 'incurred', '2026-10-16'),
+    ('EXP-023', 'Construction', 'Deep substructure excavation & diaphragm wall trade contract', 'Subcontractors', 'Keller Foundation Systems', 8600000.00, 7400000.00, 'incurred', '2026-10-16'),
+    ('EXP-024', 'Construction', 'Twin luffing-jib tower cranes & concrete boom pumps rental', 'Equipment & Plant', 'Select Plant Hire Ltd', 6000000.00, 5200000.00, 'incurred', '2026-10-16'),
+    ('EXP-025', 'Construction', 'Municipal street closure, heavy-haul permits & environmental monitoring', 'Permits & Fees', 'Department of Transportation & EPA', 2600000.00, 2200000.00, 'incurred', '2026-10-16'),
+    ('EXP-026', 'Handover', 'Final architectural touch-up finishes, hardware & wayfinding signs', 'Materials', 'Apex Interior Elements', 1200000.00, 400000.00, 'incurred', '2027-01-20'),
+    ('EXP-027', 'Handover', 'Closeout managers, QA/QC punchlist engineers & facilities team salaries', 'Salaries & Labor', 'Project Handover Management', 2000000.00, 600000.00, 'incurred', '2027-01-20'),
+    ('EXP-028', 'Handover', 'Testing, Adjusting & Balancing mechanical commissioning', 'Subcontractors', 'National Commissioning Bureau', 2600000.00, 800000.00, 'incurred', '2027-01-20'),
+    ('EXP-029', 'Handover', 'Thermal imaging cameras, airflow meters & load bank rentals', 'Equipment & Plant', 'Instrument Hire Co', 1100000.00, 300000.00, 'incurred', '2027-01-20'),
+    ('EXP-030', 'Handover', 'Certificate of Occupancy statutory approvals & fire marshal stamps', 'Permits & Fees', 'Bureau Veritas & Municipal Fire Dept', 1100000.00, 300000.00, 'incurred', '2027-01-20')
+) as e(expenditure_id, phase_name, title, category, vendor, estimated_amount, actual_amount, status, expenditure_date)
 join project_phase pp on pp.project_id = 'PRJ-2401' and pp.name = e.phase_name
-on conflict (expenditure_id) do update
+on conflict (project_id, expenditure_id) do update
 set phase_id = excluded.phase_id,
     title = excluded.title,
     category = excluded.category,
@@ -236,14 +237,14 @@ values
   ('PRJ-2401', 'TSK-103', 'engineer_report', 'Pump piping access review', 'report', 'REP-MECH-014', 'Maintenance access and pipe rack clearance reviewed against latest layout.', 'applied');
 
 insert into risk_register (
-  project_id, risk_code, category, title, likelihood, impact, affected_areas, priority, status,
+  risk_id, project_id, category, title, likelihood, impact, affected_areas, priority, status,
   mitigation, owner, due_date, affected_milestone, trigger_event,
   reasoning, evidence_source, confidence
 )
 values
   (
+    'RSK-001',
     'PRJ-2401',
-    'RSK-01',
     'Procurement & Delivery',
     'Late equipment release',
     'Likely',
@@ -261,8 +262,8 @@ values
     'Medium'
   ),
   (
+    'RSK-002',
     'PRJ-2401',
-    'RSK-02',
     'Workforce & Staffing',
     'Specialist workforce gap',
     'Possible',
@@ -280,8 +281,8 @@ values
     'Medium'
   ),
   (
+    'RSK-003',
     'PRJ-2401',
-    'RSK-03',
     'Quality & Safety',
     'Incomplete safety-review evidence',
     'Possible',
@@ -299,8 +300,8 @@ values
     'High'
   ),
   (
+    'RSK-004',
     'PRJ-2401',
-    'RSK-04',
     'Construction delay',
     'Pump installation may slip if pipe class is not clarified',
     'Likely',

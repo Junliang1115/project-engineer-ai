@@ -14,8 +14,84 @@ create table if not exists project (
   created_at timestamptz not null default now()
 );
 
+-- Phases, milestones, expenditures and risks use readable IDs numbered per project and zero-padded
+-- (P-01, M-001, EXP-001, RSK-001). Past the padded width numbers keep counting (M-1000).
+create table if not exists project_entity_counter (
+  project_id text not null references project(id) on delete cascade,
+  entity_type text not null check (entity_type in ('phase', 'milestone', 'expenditure', 'risk')),
+  last_number integer not null check (last_number > 0),
+  primary key (project_id, entity_type)
+);
+
+create or replace function project_entity_prefix(p_entity_type text)
+returns text as $$
+  select case p_entity_type
+    when 'phase' then 'P'
+    when 'milestone' then 'M'
+    when 'expenditure' then 'EXP'
+    when 'risk' then 'RSK'
+  end;
+$$ language sql immutable;
+
+-- The canonical ID for a number: phases pad to 2 digits, everything else to 3 (P-01, M-007).
+create or replace function format_project_entity_id(p_entity_type text, p_number integer)
+returns text as $$
+  select project_entity_prefix(p_entity_type) || '-' || lpad(
+    p_number::text,
+    greatest(case p_entity_type when 'phase' then 2 else 3 end, length(p_number::text)),
+    '0'
+  );
+$$ language sql immutable;
+
+-- Atomically allocates the next ID; the counter row lock serialises concurrent creates.
+create or replace function next_project_entity_id(p_project_id text, p_entity_type text)
+returns text as $$
+declare
+  prefix text := project_entity_prefix(p_entity_type);
+  allocated integer;
+begin
+  if prefix is null then
+    raise exception 'Unknown project entity type: %', p_entity_type;
+  end if;
+  insert into project_entity_counter (project_id, entity_type, last_number)
+  values (p_project_id, p_entity_type, 1)
+  on conflict (project_id, entity_type)
+  do update set last_number = project_entity_counter.last_number + 1
+  returning last_number into allocated;
+  return format_project_entity_id(p_entity_type, allocated);
+end;
+$$ language plpgsql;
+
+-- Insert trigger: fills a missing ID from the counter, or advances the counter past an explicit ID
+-- so later allocations never collide with it. Arguments: id column name, entity type.
+create or replace function trg_assign_project_entity_id()
+returns trigger as $$
+declare
+  v_id_column text := tg_argv[0];
+  v_entity_type text := tg_argv[1];
+  v_prefix text := project_entity_prefix(tg_argv[1]);
+  v_current_id text := to_jsonb(new) ->> tg_argv[0];
+  v_number integer;
+begin
+  if v_current_id is null then
+    return jsonb_populate_record(new, jsonb_build_object(v_id_column, next_project_entity_id(new.project_id, v_entity_type)));
+  end if;
+  if v_current_id ~ ('^' || v_prefix || '-[0-9]{1,9}$') then
+    v_number := substring(v_current_id from '[0-9]+$')::integer;
+  end if;
+  if v_number is null or v_number < 1 or v_current_id <> format_project_entity_id(v_entity_type, v_number) then
+    raise exception '% must look like %, got %', v_id_column, format_project_entity_id(v_entity_type, 1), v_current_id;
+  end if;
+  insert into project_entity_counter (project_id, entity_type, last_number)
+  values (new.project_id, v_entity_type, v_number)
+  on conflict (project_id, entity_type)
+  do update set last_number = greatest(project_entity_counter.last_number, excluded.last_number);
+  return new;
+end;
+$$ language plpgsql;
+
 create table if not exists project_phase (
-  phase_id uuid primary key default gen_random_uuid(),
+  phase_id text not null check (phase_id ~ '^P-((?!0+$)[0-9]{2}|[1-9][0-9]{2,})$'),
   project_id text not null references project(id) on delete cascade,
   name text not null,
   phase_order integer not null,
@@ -26,13 +102,14 @@ create table if not exists project_phase (
   planned_budget numeric(14,2) not null default 0,
   actual_cost numeric(14,2) not null default 0,
   created_at timestamptz not null default now(),
+  primary key (project_id, phase_id),
   constraint uq_project_phase_project_name unique (project_id, name)
 );
 
 create table if not exists milestone (
-  milestone_id uuid primary key default gen_random_uuid(),
+  milestone_id text not null check (milestone_id ~ '^M-((?!0+$)[0-9]{3}|[1-9][0-9]{3,})$'),
   project_id text not null references project(id) on delete cascade,
-  phase_id uuid references project_phase(phase_id) on delete set null,
+  phase_id text,
   milestone_name text not null,
   status text not null default 'planned',
   progress_percent numeric(5,2) not null default 0 check (progress_percent between 0 and 100),
@@ -41,17 +118,21 @@ create table if not exists milestone (
   actual_amount numeric(14,2) not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint uq_milestone_project_milestone_name unique (project_id, milestone_name)
+  primary key (project_id, milestone_id),
+  constraint milestone_status_check check (status in ('planned', 'in_progress', 'completed', 'blocked')),
+  constraint uq_milestone_project_milestone_name unique (project_id, milestone_name),
+  constraint milestone_phase_fkey foreign key (project_id, phase_id)
+    references project_phase(project_id, phase_id) on delete set null (phase_id) on update cascade
 );
 
 create table if not exists project_task (
   task_id text primary key,
   project_id text not null references project(id) on delete cascade,
-  milestone_id uuid references milestone(milestone_id) on delete set null,
+  milestone_id text,
   task_name text not null,
   discipline text not null,
   owner text not null,
-  status text not null default 'not_started',
+  status text not null default 'planned',
   priority text not null default 'medium',
   planned_start_date date not null default current_date,
   planned_end_date date not null,
@@ -62,14 +143,17 @@ create table if not exists project_task (
   cost_actual numeric(14,2) not null default 0,
   remark text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint project_task_status_check check (status in ('planned', 'in_progress', 'completed', 'blocked')),
+  constraint project_task_milestone_fkey foreign key (project_id, milestone_id)
+    references milestone(project_id, milestone_id) on delete set null (milestone_id) on update cascade
 );
 
 create table if not exists expenditure (
-  expenditure_id uuid primary key default gen_random_uuid(),
+  expenditure_id text not null check (expenditure_id ~ '^EXP-((?!0+$)[0-9]{3}|[1-9][0-9]{3,})$'),
   project_id text not null references project(id) on delete cascade,
-  phase_id uuid not null references project_phase(phase_id),
-  milestone_id uuid references milestone(milestone_id) on delete set null,
+  phase_id text not null,
+  milestone_id text,
   task_id text references project_task(task_id) on delete set null,
   title text not null,
   category text not null,
@@ -79,11 +163,16 @@ create table if not exists expenditure (
   status text not null default 'forecast' check (status in ('forecast', 'committed', 'incurred', 'invoiced', 'paid', 'cancelled')),
   expenditure_date date not null default current_date,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (project_id, expenditure_id),
+  constraint expenditure_phase_fkey foreign key (project_id, phase_id)
+    references project_phase(project_id, phase_id) on update cascade,
+  constraint expenditure_milestone_fkey foreign key (project_id, milestone_id)
+    references milestone(project_id, milestone_id) on delete set null (milestone_id) on update cascade
 );
 
 create index if not exists idx_expenditure_project_phase on expenditure(project_id, phase_id);
-create index if not exists idx_expenditure_milestone_id on expenditure(milestone_id);
+create index if not exists idx_expenditure_project_milestone on expenditure(project_id, milestone_id);
 create index if not exists idx_expenditure_task_id on expenditure(task_id);
 create index if not exists idx_expenditure_date on expenditure(expenditure_date);
 
@@ -105,9 +194,8 @@ create unique index if not exists uq_activity_log_source
   on activity_log (source_type, source_path);
 
 create table if not exists risk_register (
-  risk_id uuid primary key default gen_random_uuid(),
+  risk_id text not null check (risk_id ~ '^RSK-((?!0+$)[0-9]{3}|[1-9][0-9]{3,})$'),
   project_id text not null references project(id) on delete cascade,
-  risk_code text,
   category text not null,
   title text not null,
   likelihood text not null default 'Possible',
@@ -125,13 +213,14 @@ create table if not exists risk_register (
   evidence_source text,
   confidence text not null default 'Medium',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (project_id, risk_id)
 );
 
 create table if not exists lesson (
   lesson_id text primary key,
   project_id text not null references project(id) on delete cascade,
-  phase_id uuid references project_phase(phase_id) on delete set null,
+  phase_id text,
   title text not null,
   knowledge_area text not null,
   root_cause text not null,
@@ -139,7 +228,9 @@ create table if not exists lesson (
   difference text,
   description text,
   business text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint lesson_phase_fkey foreign key (project_id, phase_id)
+    references project_phase(project_id, phase_id) on delete set null (phase_id) on update cascade
 );
 
 create table if not exists request (
@@ -196,6 +287,45 @@ create table if not exists message (
   created_at timestamptz not null default now()
 );
 
+-- PDFs saved locally by backend/document_store.py (content-addressed by sha256), then parsed per page.
+create table if not exists document (
+  document_id uuid primary key default gen_random_uuid(),
+  project_id text references project(id) on delete set null,
+  sha256 text not null unique check (sha256 ~ '^[0-9a-f]{64}$'),
+  filename text not null,
+  size_bytes bigint not null check (size_bytes > 0),
+  page_count integer,
+  metadata jsonb not null default '{}'::jsonb,
+  storage_path text not null,
+  status text not null default 'stored' check (status in ('stored', 'parsed', 'failed')),
+  error text,
+  created_at timestamptz not null default now(),
+  parsed_at timestamptz
+);
+
+-- Where each document came from: a Gmail message (source_ref = message id, matching
+-- activity_log.source_path) or a SharePoint path. The same file can arrive from several places.
+create table if not exists document_source (
+  document_id uuid not null references document(document_id) on delete cascade,
+  source_type text not null check (source_type in ('gmail', 'sharepoint')),
+  source_ref text not null,
+  attachment_name text not null default '',
+  created_at timestamptz not null default now(),
+  primary key (document_id, source_type, source_ref, attachment_name)
+);
+
+create table if not exists document_page (
+  document_id uuid not null references document(document_id) on delete cascade,
+  page_number integer not null check (page_number > 0),
+  text text not null default '',
+  tables jsonb not null default '[]'::jsonb,
+  has_text boolean not null default false,
+  primary key (document_id, page_number)
+);
+
+create index if not exists idx_document_project_id on document(project_id);
+create index if not exists idx_document_source_ref on document_source(source_type, source_ref);
+
 create index if not exists idx_session_user_id on session(user_id);
 create index if not exists idx_session_project_id on session(project_id);
 create index if not exists idx_message_session_id on message(session_id);
@@ -219,3 +349,12 @@ create trigger sync_phase_to_project
 after update of status or insert on project_phase
 for each row
 execute function trg_sync_project_current_phase();
+
+create or replace trigger assign_project_phase_id before insert on project_phase
+for each row execute function trg_assign_project_entity_id('phase_id', 'phase');
+create or replace trigger assign_milestone_id before insert on milestone
+for each row execute function trg_assign_project_entity_id('milestone_id', 'milestone');
+create or replace trigger assign_expenditure_id before insert on expenditure
+for each row execute function trg_assign_project_entity_id('expenditure_id', 'expenditure');
+create or replace trigger assign_risk_id before insert on risk_register
+for each row execute function trg_assign_project_entity_id('risk_id', 'risk');

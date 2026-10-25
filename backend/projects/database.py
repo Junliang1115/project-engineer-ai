@@ -7,7 +7,7 @@ from psycopg.rows import dict_row
 from pathlib import Path
 
 # Load .env from project root
-env_file = Path(__file__).resolve().parents[1] / ".env"
+env_file = Path(__file__).resolve().parents[2] / ".env"
 if env_file.exists():
     with open(env_file, "r", encoding="utf-8") as f:
         for line in f:
@@ -27,6 +27,138 @@ def _connect():
 
 def _normalize_status(status):
     return (status or "").replace("_", " ").title()
+
+
+def _expenditure_payload(row):
+    estimate = _millions(row["estimated_amount"])
+    actual = _millions(row["actual_amount"])
+    return {
+        "id": str(row["expenditure_id"]),
+        "phase": row["phase"],
+        "title": row["title"],
+        "category": row["category"],
+        "vendor": row["vendor"] or "",
+        "estimate": estimate,
+        "actual": actual,
+        "variance": round(estimate - actual, 1),
+        "status": _normalize_status(row["status"]),
+        "expenditureDate": row["expenditure_date"].isoformat() if row["expenditure_date"] else "",
+        "milestoneId": str(row["milestone_id"]) if row.get("milestone_id") else None,
+        "taskId": row.get("task_id"),
+    }
+
+
+def _file_size(size_bytes):
+    if not size_bytes:
+        return ""
+    if size_bytes < 1024 * 1024:
+        return f"{max(1, round(size_bytes / 1024))} KB"
+    return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+
+def _request_payload(row, document=None):
+    payload = {
+        "id": row["request_id"],
+        "category": _normalize_status(row["request_type"]),
+        "title": row["title"],
+        "description": row["description"],
+        "status": _normalize_status(row["status"]),
+        "createdAt": row["created_at"].isoformat() if row["created_at"] else "",
+    }
+    if document:
+        # The stored PDF from the email that raised the request; the page loads it from GET /documents/{id}/file.
+        payload.update({
+            "documentId": str(document["document_id"]),
+            "attachmentName": document["filename"],
+            "attachmentSize": _file_size(document["size_bytes"]),
+            "attachmentPages": document["page_count"],
+            "attachmentStatus": document["status"],
+            "submittedBy": document["sender"] or "",
+        })
+    return payload
+
+
+def _request_documents(conn, project_id):
+    """The original PDF of each request: an attachment of the email that proposed the request.
+
+    Emails that create a request (or update it, for follow-ups) carry its ID in their proposed
+    actions; their PDF attachments are in document_source (gmail, message id). The email that
+    created the request wins, then the earliest one. Returns {request_id: document row}.
+    """
+    if not conn.execute("select to_regclass('public.document') as name").fetchone()["name"]:
+        return {}  # Older database without the document tables (python backend/db/rebuild.py).
+    rows = conn.execute(
+        """
+        select distinct on (r.request_id)
+               r.request_id, d.document_id, s.attachment_name as filename, d.size_bytes, d.page_count, d.status,
+               a.processing_details->>'sender' as sender
+        from activity_log a
+        cross join lateral jsonb_array_elements(coalesce(a.processing_details->'proposed_actions', '[]'::jsonb)) p
+        cross join lateral (select coalesce(p->'changes'->>'request_id', p->>'record_id') as request_id) r
+        join document_source s on s.source_type = 'gmail' and s.source_ref = a.source_path
+        join document d on d.document_id = s.document_id
+        where a.project_id = %s and a.source_type = 'gmail' and p->>'entity' = 'request' and r.request_id is not null
+        order by r.request_id, (p->>'operation' = 'create') desc, a.created_at, s.attachment_name
+        """,
+        (project_id,),
+    ).fetchall()
+    return {row["request_id"]: row for row in rows}
+
+
+def _lesson_payload(row):
+    return {
+        "id": row.get("lesson_id") or "LL-000",
+        "lessonId": row.get("lesson_id"),
+        "projectId": row["project_id"],
+        "project": row.get("project_name") or row["project_id"],
+        "phase": row.get("phase_name") or row.get("current_phase") or "Construction",
+        "category": row["knowledge_area"],
+        "event": row["title"],
+        "rootCause": row["root_cause"],
+        "lesson": row["description"] or row["title"],
+        "action": row["business"] or "Mitigate discrepancy according to standard operating procedure.",
+    }
+
+
+def _risk_payload(row):
+    return {
+        "id": row["risk_id"],
+        "title": row["title"],
+        "category": row["category"],
+        "likelihood": row["likelihood"] or "Possible",
+        "impact": row["impact"] or "Medium",
+        "affectedAreas": list(row.get("affected_areas") or []),
+        "priority": _normalize_status(row.get("priority") or "medium"),
+        "owner": row["owner"] or "Unassigned",
+        "mitigation": row["mitigation"] or "",
+        "due": row["due_date"].strftime("%d %b") if row["due_date"] else "",
+        "dueDate": row["due_date"].isoformat() if row["due_date"] else "",
+        "affected": row["affected_milestone"] or "General milestone",
+        "trigger": row["trigger_event"] or "Operational indicator threshold reached",
+        "reasoning": row["reasoning"] or row["title"],
+        "evidence": row["evidence_source"] or "Project documentation & review",
+        "confidence": row["confidence"] or "Medium",
+        "status": _normalize_status(row["status"]),
+    }
+
+
+def _activity_payload(row, project_id, index):
+    state = (row.get("processing_state") or "needs_review").lower()
+    status = {"applied": "Done", "no_change": "Done", "done": "Done", "rejected": "Rejected"}.get(state, "Needs review")
+    return {
+        "id": f"{project_id}-ACT-{index + 1:02d}",
+        "activityId": str(row["activity_id"]),
+        "reviewable": row["source_type"] == "gmail",
+        "proposalCount": len((row.get("processing_details") or {}).get("proposed_actions") or []),
+        "type": _normalize_status(row["activity_type"]),
+        "source": "Email" if row["source_type"] in {"gmail", "email"} else _normalize_status(row["source_type"]),
+        "received": row["logged_at"].strftime("%Y-%m-%d %H:%M") if row["logged_at"] else "",
+        "relatedTo": row.get("task_id") or project_id,
+        "taskId": row.get("task_id"),
+        "summary": row["summary"],
+        "title": row["title"],
+        "status": status,
+    }
 
 
 def list_projects_from_db():
@@ -74,7 +206,7 @@ def _project_payload(conn, project):
         """
         select pp.name as phase, coalesce(sum(m.planned_amount), 0) as estimate, coalesce(sum(m.actual_amount), 0) as actual
         from project_phase pp
-        left join milestone m on m.phase_id = pp.phase_id
+        left join milestone m on m.project_id = pp.project_id and m.phase_id = pp.phase_id
         where pp.project_id = %s
         group by pp.phase_order, pp.name
         order by pp.phase_order
@@ -86,7 +218,7 @@ def _project_payload(conn, project):
         select m.milestone_id, m.milestone_name, m.status, m.progress_percent, m.due_date,
                m.planned_amount, m.actual_amount, pp.name as phase_name
         from milestone m
-        left join project_phase pp on pp.phase_id = m.phase_id
+        left join project_phase pp on pp.project_id = m.project_id and pp.phase_id = m.phase_id
         where m.project_id = %s
         order by m.due_date nulls last, m.milestone_name
         """,
@@ -94,12 +226,12 @@ def _project_payload(conn, project):
     ).fetchall()
     risk_rows = conn.execute(
         """
-        select risk_id, risk_code, category, title, likelihood, impact, status,
+        select risk_id, category, title, likelihood, impact, affected_areas, priority, status,
                mitigation, owner, due_date, affected_milestone, trigger_event,
                reasoning, evidence_source, confidence
         from risk_register
         where project_id = %s
-        order by risk_code nulls last, due_date nulls last, title
+        order by substring(risk_id from '[0-9]+$')::integer, due_date nulls last, title
         """,
         (project_id,),
     ).fetchall()
@@ -113,14 +245,41 @@ def _project_payload(conn, project):
         """,
         (project_id,),
     ).fetchall()
-    change_orders = conn.execute(
+    requests = conn.execute(
         """
-        select request_id, title, request_type, description, status
+        select request_id, title, request_type, description, status, created_at
         from request
-        where project_id = %s and request_type = 'change_order'
-        order by request_id
+        where project_id = %s
+        order by created_at desc, request_id
         """,
         (project_id,),
+    ).fetchall()
+    request_documents = _request_documents(conn, project_id)
+    expenditures = conn.execute(
+        """
+        select e.expenditure_id, pp.name as phase, e.title, e.category, e.vendor,
+               e.estimated_amount, e.actual_amount, e.status, e.expenditure_date,
+               e.milestone_id, e.task_id
+        from expenditure e
+        join project_phase pp on pp.project_id = e.project_id and pp.phase_id = e.phase_id
+        where e.project_id = %s
+        order by e.expenditure_date nulls last, e.created_at, e.expenditure_id
+        """,
+        (project_id,),
+    ).fetchall()
+    lesson_rows = conn.execute(
+        """
+        select l.lesson_id, l.project_id, l.title, l.knowledge_area,
+               l.root_cause, l.description, l.business,
+               p.name as project_name, p.current_phase,
+               pp.name as phase_name
+        from lesson l
+        join project p on p.id = l.project_id
+        left join project_phase pp on pp.project_id = l.project_id and pp.phase_id = l.phase_id
+        where l.project_id = %s or (%s in ('PRJ-01', 'PRJ-2401') and l.project_id in ('PRJ-01', 'PRJ-2401'))
+        order by l.lesson_id
+        """,
+        (project_id, project_id),
     ).fetchall()
 
     tasks_payload = [
@@ -188,6 +347,7 @@ def _project_payload(conn, project):
             }
             for row in costs
         ],
+        "expenditures": [_expenditure_payload(row) for row in expenditures],
         "milestones": milestones_payload,
         "tasks": tasks_payload,
         "issues": [
@@ -200,41 +360,9 @@ def _project_payload(conn, project):
             }
             for index, row in enumerate(risk_rows)
         ],
-        "risks": [
-            {
-                "id": row["risk_code"] or f"RSK-{index + 1:02d}",
-                "title": row["title"],
-                "category": row["category"],
-                "likelihood": row["likelihood"] or "Possible",
-                "impact": row["impact"] or "Medium",
-                "owner": row["owner"] or "Unassigned",
-                "mitigation": row["mitigation"] or "",
-                "due": row["due_date"].strftime("%d %b") if row["due_date"] else "",
-                "dueDate": row["due_date"].isoformat() if row["due_date"] else "",
-                "affected": row["affected_milestone"] or "General milestone",
-                "trigger": row["trigger_event"] or "Operational indicator threshold reached",
-                "reasoning": row["reasoning"] or row["title"],
-                "evidence": row["evidence_source"] or "Project documentation & review",
-                "confidence": row["confidence"] or "Medium",
-                "status": _normalize_status(row["status"]),
-            }
-            for index, row in enumerate(risk_rows)
-        ],
-        "activities": [
-            {
-                "id": f"{project_id}-ACT-{index + 1:02d}",
-                "type": _normalize_status(row["activity_type"]),
-                "source": "email" if row["source_type"] == "gmail" else row["source_type"],
-                "from": (row.get("processing_details") or {}).get("sender") or "",
-                "received": row["logged_at"].strftime("%Y-%m-%d %H:%M") if row["logged_at"] else "",
-                "relatedTo": row.get("task_id") or project_id,
-                "taskId": row.get("task_id"),
-                "summary": row["summary"],
-                "action": row["title"],
-                "details": row.get("processing_details"),
-            }
-            for index, row in enumerate(activities)
-        ],
+        "risks": [_risk_payload(row) for row in risk_rows],
+        "activities": [_activity_payload(row, project_id, index) for index, row in enumerate(activities)],
+        "requests": [_request_payload(row, request_documents.get(row["request_id"])) for row in requests],
         "changeOrders": [
             {
                 "id": row["request_id"],
@@ -250,8 +378,10 @@ def _project_payload(conn, project):
                 "responsibleEngineer": "Project engineer",
                 "status": _normalize_status(row["status"]),
             }
-            for row in change_orders
+            for row in requests
+            if row["request_type"] == "change_order"
         ],
+        "lessons": [_lesson_payload(row) for row in lesson_rows],
     }
 
 
@@ -357,4 +487,37 @@ def get_last_updated_at():
         if row and row.get("last_updated"):
             return row["last_updated"].isoformat()
         return None
+
+
+def list_lessons_from_db(project_id: str | None = None):
+    with _connect() as conn:
+        if project_id:
+            rows = conn.execute(
+                """
+                select l.lesson_id, l.project_id, l.title, l.knowledge_area,
+                       l.root_cause, l.description, l.business,
+                       p.name as project_name, p.current_phase,
+                       pp.name as phase_name
+                from lesson l
+                join project p on p.id = l.project_id
+                left join project_phase pp on pp.project_id = l.project_id and pp.phase_id = l.phase_id
+                where l.project_id = %s or (%s in ('PRJ-01', 'PRJ-2401') and l.project_id in ('PRJ-01', 'PRJ-2401'))
+                order by l.lesson_id
+                """,
+                (project_id, project_id),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                select l.lesson_id, l.project_id, l.title, l.knowledge_area,
+                       l.root_cause, l.description, l.business,
+                       p.name as project_name, p.current_phase,
+                       pp.name as phase_name
+                from lesson l
+                join project p on p.id = l.project_id
+                left join project_phase pp on pp.project_id = l.project_id and pp.phase_id = l.phase_id
+                order by l.lesson_id
+                """
+            ).fetchall()
+        return [_lesson_payload(row) for row in rows]
 

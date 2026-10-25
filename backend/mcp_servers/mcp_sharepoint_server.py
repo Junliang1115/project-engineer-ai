@@ -13,9 +13,9 @@ if str(BASE_DIR) not in sys.path:
 from mcp.server import MCPServer
 
 try:
-    from backend.sharepoint_service import SharePointError, SharePointService
+    from backend.integrations.sharepoint_service import SharePointError, SharePointService
 except ImportError:
-    from sharepoint_service import SharePointError, SharePointService
+    from integrations.sharepoint_service import SharePointError, SharePointService
 
 
 server = MCPServer("project-engineer-sharepoint")

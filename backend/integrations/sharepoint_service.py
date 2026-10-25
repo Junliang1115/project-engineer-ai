@@ -15,7 +15,7 @@ from openpyxl import load_workbook
 from openpyxl.utils.cell import range_boundaries
 
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[1]  # backend/
 MAX_SEARCH_RESULTS = 200
 MAX_TEXT_BYTES = 2 * 1024 * 1024
 MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024

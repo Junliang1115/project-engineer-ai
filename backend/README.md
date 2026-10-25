@@ -38,18 +38,6 @@ This automatically boots PostgreSQL 16 (with schema and seed loaded), the FastAP
 
 - `GET /health`
 - `GET /projects`
-- `POST /agent-runs`
-- `GET /agent-runs/{run_id}`
-
-## Example
-
-```json
-{
-  "project_id": "PRJ-2401",
-  "message": "Pipe thickness is not enough and may delay installation"
-}
-```
-
 ## SharePoint MCP
 
 The SharePoint MCP server provides read-only access to one configured

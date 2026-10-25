@@ -13,7 +13,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[1]  # backend/
 ROOT_DIR = BASE_DIR.parent
 DEFAULT_DOWNLOADS_DIR = BASE_DIR / "downloads"
 MAX_SEARCH_RESULTS = 100
@@ -66,9 +66,12 @@ class GmailService:
         self,
         config: GmailConfig | None = None,
         service=None,
+        interactive: bool = True,
     ):
+        """With interactive=False an expired sign-in raises GmailError instead of opening a browser."""
         self.config = config or GmailConfig.from_env()
         self._service = service
+        self.interactive = interactive
 
     def _get_service(self):
         """Authenticates and returns authorized Google API Gmail service instance."""
@@ -93,6 +96,8 @@ class GmailService:
                     creds = None
 
             if not creds or not creds.valid:
+                if not self.interactive:
+                    raise GmailError("Gmail sign-in has expired. Run a Gmail scan from the terminal to sign in again.")
                 if not self.config.credentials_path.exists():
                     raise GmailError(
                         f"OAuth token expired and credentials file not found at '{self.config.credentials_path}'. "
@@ -262,6 +267,27 @@ class GmailService:
                 print(f"Failed to fetch message {msg_ref.get('id')}: {err}", file=sys.stderr)
         return parsed_emails
 
+    def get_attachment_bytes(self, message_id: str, attachment_id: str) -> bytes:
+        """Fetch one attachment's bytes without saving it (size-checked)."""
+        if not message_id or not message_id.strip() or not attachment_id or not attachment_id.strip():
+            raise GmailError("message_id and attachment_id are required")
+        att_id = attachment_id.strip()
+        try:
+            attachment = (
+                self._get_service().users()
+                .messages()
+                .attachments()
+                .get(userId="me", messageId=message_id.strip(), id=att_id)
+                .execute()
+            )
+        except HttpError as exc:
+            raise GmailError(f"Failed to retrieve attachment {att_id}: {exc}") from exc
+
+        file_bytes = base64.urlsafe_b64decode(attachment.get("data", "").encode("utf-8"))
+        if len(file_bytes) > MAX_DOWNLOAD_BYTES:
+            raise GmailError(f"Attachment exceeds maximum limit of {MAX_DOWNLOAD_BYTES} bytes")
+        return file_bytes
+
     def download_attachments(
         self,
         message_id: str,
@@ -284,23 +310,7 @@ class GmailService:
 
         # Case 1: Specific attachment_id
         if attachment_id.strip():
-            att_id = attachment_id.strip()
-            try:
-                attachment = (
-                    service.users()
-                    .messages()
-                    .attachments()
-                    .get(userId="me", messageId=message_id, id=att_id)
-                    .execute()
-                )
-            except HttpError as exc:
-                raise GmailError(f"Failed to retrieve attachment {att_id}: {exc}") from exc
-
-            raw_data = attachment.get("data", "")
-            file_bytes = base64.urlsafe_b64decode(raw_data.encode("utf-8"))
-            if len(file_bytes) > MAX_DOWNLOAD_BYTES:
-                raise GmailError(f"Attachment exceeds maximum limit of {MAX_DOWNLOAD_BYTES} bytes")
-
+            file_bytes = self.get_attachment_bytes(message_id, attachment_id)
             safe_name = Path(filename.strip() or f"attachment_{message_id}.bin").name
             save_path = dest_dir / safe_name
             save_path.write_bytes(file_bytes)

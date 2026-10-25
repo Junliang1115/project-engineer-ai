@@ -3,14 +3,14 @@ from pathlib import Path
 import psycopg
 
 # Load .env if present
-env_file = Path(__file__).resolve().parents[1] / ".env"
+env_file = Path(__file__).resolve().parents[2] / ".env"
 if env_file.exists():
     with open(env_file, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ[k.strip()] = v.strip().strip('"').strip("'")
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgrespassword@127.0.0.1:5433/project_engineer")
 

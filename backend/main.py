@@ -1,19 +1,24 @@
+import sys
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
-from database import list_projects_from_db, get_project_from_db, list_project_phases, update_project_phase, get_last_updated_at
-from agents import run_agent_workflow
-from risk_agent import run_risk_investigation, run_schema_discovery
-from models import AgentRunRequest, AgentRunResponse, PhaseUpdateRequest, PhaseResponse
-from scan_updates import run_scan, database_tools
-from gmail_service import GmailService
+from projects.database import list_projects_from_db, list_project_phases, update_project_phase, get_last_updated_at
+from models import (
+    PhaseUpdateRequest, PhaseResponse, ReviewCloseRequest, ReviewDecisionRequest,
+    SharePointDocumentRequest,
+)
+from reconciliation.scan_updates import run_scan, database_tools
+from integrations.gmail_service import GmailError, GmailService
+from reconciliation.activity_review import ReviewError, close_review, decide_action, get_activity_review
+from documents.document_store import DocumentError, document_path, get_document, ingest_sharepoint_pdf, list_project_documents
+from integrations.sharepoint_service import SharePointError
 
 
 # Project Engineer FastAPI Backend
 app = FastAPI(title="Project Engineer Agent Backend")
-agent_runs: dict[str, dict] = {}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,16 +49,6 @@ def get_projects_meta():
     return {"last_updated": timestamp}
 
 
-@app.get("/risk-agent/schema/{project_id}")
-async def discover_risk_schema(project_id: str):
-    return await run_schema_discovery(project_id)
-
-
-@app.post("/risk-agent/investigate")
-async def investigate_risk(request: AgentRunRequest):
-    return await run_risk_investigation(request.project_id, request.message)
-
-
 @app.post("/scan-gmail")
 async def trigger_scan_updates(query: str = "label:INBOX newer_than:7d PRJ-", limit: int = 25, dry_run: bool = False):
     global _last_scan_triggered_at
@@ -75,6 +70,84 @@ async def trigger_scan_updates(query: str = "label:INBOX newer_than:7d PRJ-", li
         raise HTTPException(status_code=500, detail=error_msg)
 
 
+def _review_call(function, *args, **kwargs):
+    """Run an activity review function, mapping its errors to HTTP responses."""
+    try:
+        return function(*args, **kwargs)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ReviewError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/activities/{activity_id}/review")
+def read_activity_review(activity_id: str):
+    return _review_call(get_activity_review, activity_id)
+
+
+@app.get("/activities/{activity_id}/email")
+def get_activity_email(activity_id: str):
+    """The original email, read from Gmail when the review page opens (nothing extra is stored)."""
+    message_id = _review_call(get_activity_review, activity_id)["messageId"]
+    try:
+        email = GmailService(interactive=False).get_message_detail(message_id)
+    except GmailError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {key: email.get(key) for key in ("subject", "from", "to", "date", "body", "attachments")}
+
+
+# ── Documents: PDFs saved locally first, then parsed (backend/document_store.py) ──
+
+def _document_call(function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (DocumentError, SharePointError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/documents/sharepoint")
+def ingest_sharepoint_document(request: SharePointDocumentRequest):
+    """Fetch a PDF from SharePoint / OneDrive, store it locally, and parse it."""
+    row = _document_call(ingest_sharepoint_pdf, request.path, request.project_id)
+    return _document_call(get_document, row["document_id"], with_pages=False)
+
+
+@app.get("/projects/{project_id}/documents")
+def get_project_documents(project_id: str):
+    return list_project_documents(project_id)
+
+
+@app.get("/documents/{document_id}")
+def get_stored_document(document_id: str):
+    """Document metadata and its extracted pages (text and tables)."""
+    return _document_call(get_document, document_id)
+
+
+@app.get("/documents/{document_id}/file")
+def get_stored_document_file(document_id: str):
+    """The stored PDF itself, shown inline (e.g. in the request page iframe)."""
+    row = _document_call(get_document, document_id, with_pages=False)
+    path = document_path(row)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Stored file is missing")
+    return FileResponse(path, media_type="application/pdf", filename=row["filename"], content_disposition_type="inline")
+
+
+@app.post("/activities/{activity_id}/actions/{index}")
+def decide_activity_action(activity_id: str, index: int, request: ReviewDecisionRequest):
+    return _review_call(
+        decide_action, activity_id, index, request.decision,
+        changes=request.changes, record_id=request.record_id, note=request.note,
+    )
+
+
+@app.post("/activities/{activity_id}/close")
+def close_activity_review(activity_id: str, request: ReviewCloseRequest):
+    return _review_call(close_review, activity_id, request.note)
+
+
 @app.get("/projects/{project_id}/phases")
 def get_project_phases(project_id: str):
     return list_project_phases(project_id)
@@ -91,21 +164,4 @@ def update_phase(project_id: str, phase_id: str, request: PhaseUpdateRequest):
     if not updated:
         raise HTTPException(status_code=404, detail="Phase or Project not found")
     return updated
-
-
-@app.post("/agent-runs", response_model=AgentRunResponse)
-def create_agent_run(request: AgentRunRequest):
-    project = get_project_from_db(request.project_id)
-    projects_list = [project] if project else []
-    result = run_agent_workflow(request.project_id, request.message, projects_list)
-    agent_runs[result["id"]] = result
-    return result
-
-
-@app.get("/agent-runs/{run_id}", response_model=AgentRunResponse)
-def get_agent_run(run_id: str):
-    try:
-        return agent_runs[run_id]
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail="Agent run not found") from exc
 

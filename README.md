@@ -41,7 +41,7 @@ The platform features an autonomous, background reconciliation pipeline that rec
 |  (4. Deterministic Rules) --> Enforce forward transitions & quarantine risks      |
 |        |                      (Change orders & conflicts -> 'needs_review')       |
 |        v                                                                          |
-|  (5. Atomic Apply) ---------> Write to `activity_log` & update `project_task`     |
+|  (5. Record for Review) ----> Write proposed actions to `activity_log`             |
 |        |                                                                          |
 |        v                                                                          |
 |  [Frontend UI] -------------> Real-time Milestone cards & interactive Task Log    |
@@ -51,64 +51,46 @@ The platform features an autonomous, background reconciliation pipeline that rec
 ### Detailed Pipeline Stages
 
 #### 1. Ingestion & Deduplication
-- **Scheduled Scanner (`backend/scan_updates.py`)**: Runs automatically on a configurable cron schedule (e.g. every 15 minutes via `deploy/install-gmail-cron.sh`) or manually via CLI.
-- **OAuth Read-Only Scope**: Uses `backend/gmail_service.py` with minimal `gmail.readonly` permissions to fetch inbox messages.
+- **Scheduled Scanner (`backend/reconciliation/scan_updates.py`)**: Runs automatically on a configurable cron schedule (e.g. every 15 minutes via `deploy/install-gmail-cron.sh`) or manually via CLI.
+- **OAuth Read-Only Scope**: Uses `backend/integrations/gmail_service.py` with minimal `gmail.readonly` permissions to fetch inbox messages.
 - **Idempotency**: Message IDs are verified against existing entries in `activity_log.source_path`. Already-processed messages are immediately skipped, preventing double-processing.
 
 #### 2. AI Parsing & Extraction
-- Powered by LangChain and DeepSeek (`backend/email_reconciliation.py`) using structured model output.
-- Extracted structured payload enforces the strict Pydantic schema (`EmailFacts`):
+- Powered by LangChain and DeepSeek (`backend/reconciliation/email_reconciliation.py`) using structured model output.
+- The model reads the allowed entities and fields from the Database MCP (`get_project_entity_schema`) and returns an `EmailExtraction`: categories, project ID, reported date, summary, the proposed project actions and any unresolved issue.
 
 ```python
-class EmailFacts(BaseModel):
-    categories: list[Literal["daily_update", "technical_query", "change_order", "other"]] = Field(
-        default_factory=list,
-        description="Identified communication categories."
-    )
-    project_id: str = Field(default="", description="Explicit project code, e.g. 'PRJ-2401'.")
-    task_id: str = Field(default="", description="Explicit task reference code, e.g. 'TSK-102'.")
-    request_id: str = Field(default="", description="Explicit request reference code, e.g. 'CR-001' or 'TQ-002'.")
-    reported_date: date | None = Field(default=None, description="Date reported in message header or body.")
-    reported_status: Literal["", "not_started", "in_progress", "completed", "blocked"] = Field(
-        default="",
-        description="Normalized task lifecycle status."
-    )
-    destination: Literal["activity_log", "project_task", "request", "review_only"] = Field(
-        default="review_only",
-        description="Intended target table."
-    )
-    action: Literal["create", "update", "no_change", "review"] = Field(
-        default="review",
-        description="Proposed database mutation."
-    )
-    evidence: str = Field(
-        default="",
-        description="Direct key phrase or verbatim quote from the email explaining the status (not the full email body)."
-    )
-    summary: str = Field(
-        default="",
-        description="Concise 1-2 sentence overall summary of the entire email content."
-    )
-    uncertain: bool = Field(
-        default=False, 
-        description="Flag set to True if a match, identifier, or status claim is ambiguous."
-    )
+class EmailAction(BaseModel):
+    operation: Literal["create", "update"]
+    entity: str                       # e.g. "project_task", "request", "risk_register"
+    record_id: str = ""               # exactly as written in the email; empty for create
+    changes: list[FieldChange]        # field/value pairs from the allowed changes list
+    evidence: str                     # short quote from the email
+    confidence: Literal["high", "medium", "low"]
+
+class EmailExtraction(BaseModel):
+    categories: list[ActivityCategory]
+    project_id: str
+    reported_date: date | None
+    summary: str
+    actions: list[EmailAction]        # one per change the email states
+    unresolved_issue: str             # a problem no action records
 ```
 
 #### 3. Deterministic Reconciler & Safety Guardrails
 To prevent hallucinations and protect project data integrity, the pipeline applies hard deterministic guardrails:
-- **Forward-Only State Transitions**: Only valid forward progressions are permitted automatically (`not_started` -> `in_progress` -> `completed`). Regressions, cancellations, or skipped milestones require human review.
-- **Change Order Isolation**: Emails proposing change orders or cost modifications are strictly mapped to `needs_review` and recorded in `activity_log`. They **never** automatically modify budgets, costs, or schedule baselines.
-- **Stale Update Prevention**: Compares the email's timestamp against prior logged updates for that task. Outdated reports cannot overwrite newer status changes.
+- **Human Review**: Email actions are never applied automatically. Every proposed action is recorded in `activity_log` as `needs_review` for a person to approve.
+- **Grounding**: The model sees the project's current records, so it can match a named record to its ID. Every cited ID should appear exactly in the email; IDs matched by name from the records are flagged for the reviewer, and IDs in neither are reported. A task status change needs a date stated in the email (`ground_email`). Problems are shown to the reviewer as the reason.
+- **Same Rules as Agents**: Each proposed action is checked against the Database MCP's entity policies, status transitions (see `backend/core/project_rules.py`) and evidence rules, then rolled back. The result (`ok` or the blocking rule) is stored with the action.
+- **Change Orders**: A new `CO-` reference is proposed as an `open` request; it is never approved automatically.
 - **Untrusted Content Sanitization**: Raw email text is treated as untrusted data. The LLM cannot construct or execute raw SQL.
 
-#### 4. Atomic Database Updates via MCP
-Database operations are handled securely through the Database MCP server (`backend/mcp_db_server.py`):
-- **`lookup_email_context`**: Validates project existence, task IDs, and current state.
-- **`apply_email_decision`**: Executes the changes in an atomic PostgreSQL transaction:
-  - Inserts a record into `activity_log` with the foreign key `task_id`, `source_type='gmail_scanner'`, `source_path=<Message ID>`, `state='applied'|'needs_review'`, and sender/quote metadata stored in `processing_details`.
-  - Updates the corresponding record in `project_task` (e.g., `status = 'completed'`).
-  - Protected by a unique partial index on `activity_log(source_type, source_path)`.
+#### 4. Recording via the Database MCP
+Database operations are handled through the Database MCP server (`backend/mcp_servers/mcp_db_server.py`):
+- **`get_project_entity_schema`**: Supplies the allowed changes for the prompt.
+- **`list_projects`** / **`get_project_records`**: Find the project the email mentions and load its current records (every policy entity, scoped to the project) for the prompt and the existence check.
+- **`record_email_decision`**: Writes one `activity_log` row per email (`source_type='gmail'`, `source_path=<Message ID>`, `processing_state='needs_review'|'no_change'`) with sender, evidence, reason and the checked `proposed_actions` in `processing_details`. It never changes project records.
+  - Protected by a unique index on `activity_log(source_type, source_path)`.
 
 
 ## Knowledge Bank
