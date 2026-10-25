@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { PanelLeftOpen, RotateCcw } from "lucide-react";
-import { FilterBar, FilterSelect } from "./components/FilterBar.jsx";
-import { ListTable } from "./components/ListTable.jsx";
+import { FilterBar, FilterSelect } from "../../../components/FilterBar.jsx";
+import { ListTable } from "../../../components/ListTable.jsx";
 import "./LessonsPage.css";
 
 /**

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import LessonRegister from "./LessonRegister.jsx";
-import { fetchProjects } from "./api.js";
+import LessonRegister from "../projects/lessons/LessonRegister.jsx";
+import { fetchProjects } from "../../services/api.js";
 import {
   AlertTriangle,
   BookOpen,

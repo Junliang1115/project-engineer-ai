@@ -6,10 +6,10 @@ import {
   Layers,
   RotateCw,
 } from "lucide-react";
-import { Tag } from "./components/Tag.jsx";
-import { Button } from "./components/Button.jsx";
-import { Progress } from "./components/Progress.jsx";
-import { SearchBar } from "./components/SearchBar.jsx";
+import { Tag } from "../../../components/Tag.jsx";
+import { Button } from "../../../components/Button.jsx";
+import { Progress } from "../../../components/Progress.jsx";
+import { SearchBar } from "../../../components/SearchBar.jsx";
 
 export function LoadingState() {
   return (

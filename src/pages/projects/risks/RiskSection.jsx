@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { ListRow } from "./components/ListRow.jsx";
-import { FilterBar, FilterSelect } from "./components/FilterBar.jsx";
-import "./ProjectOverview.css";
+import { ListRow } from "../../../components/ListRow.jsx";
+import { FilterBar, FilterSelect } from "../../../components/FilterBar.jsx";
+import "../overview/ProjectOverview.css";
 import "./RiskSection.css";
 
 export const priorityOrder = { Critical: 0, High: 1, Medium: 2, Low: 3 };

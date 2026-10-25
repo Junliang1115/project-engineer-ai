@@ -9,10 +9,10 @@ import {
   Sparkles,
   User,
 } from "lucide-react";
-import teamsLogo from "./assets/data-sources/teams.png";
-import sharepointLogo from "./assets/data-sources/sharepoint.png";
-import outlookLogo from "./assets/data-sources/outlook.png";
-import googleDriveLogo from "./assets/data-sources/google-drive.png";
+import teamsLogo from "../../assets/data-sources/teams.png";
+import sharepointLogo from "../../assets/data-sources/sharepoint.png";
+import outlookLogo from "../../assets/data-sources/outlook.png";
+import googleDriveLogo from "../../assets/data-sources/google-drive.png";
 
 const initialSources = [
   {

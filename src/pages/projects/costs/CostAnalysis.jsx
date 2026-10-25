@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Forward, ArrowLeft, ChevronDown } from "lucide-react";
-import { Tag, StatusTag } from "./components/Tag.jsx";
+import { Tag, StatusTag } from "../../../components/Tag.jsx";
 
 const phases = [
   "Concept",
@@ -10,9 +10,9 @@ const phases = [
   "Construction",
   "Handover",
 ];
-import { DetailPanel } from "./components/DetailPanel.jsx";
-import { FilterBar, FilterSelect } from "./components/FilterBar.jsx";
-import "./ProjectOverview.css";
+import { DetailPanel } from "../../../components/DetailPanel.jsx";
+import { FilterBar, FilterSelect } from "../../../components/FilterBar.jsx";
+import "../overview/ProjectOverview.css";
 
 const usdMillions = (value) => `$${value.toFixed(1)}M`;
 

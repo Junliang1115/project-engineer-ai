@@ -1,8 +1,8 @@
 import React from "react";
-import { Tag } from "./components/Tag.jsx";
-import { Progress } from "./components/Progress.jsx";
-import { CostOutlook } from "./CostAnalysis.jsx";
-import RiskControls from "./RiskSection.jsx";
+import { Tag } from "../../../components/Tag.jsx";
+import { Progress } from "../../../components/Progress.jsx";
+import { CostOutlook } from "../costs/CostAnalysis.jsx";
+import RiskControls from "../risks/RiskSection.jsx";
 import { buildProjectOverview } from "./projectOverviewModel.js";
 import "./ProjectOverview.css";
 

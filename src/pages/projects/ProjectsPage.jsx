@@ -1,15 +1,24 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle as Warning,
   ArrowLeft,
   ClipboardList as ClipboardText,
   RotateCcw,
 } from "lucide-react";
-import { fetchProjects, fetchProjectsMeta, triggerScanUpdates } from "./api.js";
-import { Tag, StatusTag } from "./components/Tag.jsx";
-import { Button } from "./components/Button.jsx";
-import { Progress } from "./components/Progress.jsx";
-import { filterActivitiesByDate } from "./activityLog.js";
+import { fetchProjects, fetchProjectsMeta, triggerScanUpdates } from "../../services/api.js";
+import { Tag, StatusTag } from "../../components/Tag.jsx";
+import { Button } from "../../components/Button.jsx";
+import { Progress } from "../../components/Progress.jsx";
+import { filterActivitiesByDate } from "./activities/activityLog.js";
+import {
+  activityReviewPath,
+  costAnalysisPath,
+  parseProjectRoute,
+  projectPath,
+  projectsPath,
+  requestDetailPath,
+} from "../../app/routes.js";
 
 export const phases = [
   "Concept",
@@ -40,15 +49,15 @@ export const money = (value, compact = false) =>
       }).format(value);
 
 import ProjectSidebar from "./ProjectSidebar.jsx";
-import ProjectOverview, { AttentionControls } from "./ProjectOverview.jsx";
-import RiskControls from "./RiskSection.jsx";
-import RequestSection from "./RequestSection.jsx";
-import RequestDetailPage from "./RequestDetailPage.jsx";
-import ActivityReview from "./ActivityReview.jsx";
-import LessonRegister, { LESSON_TABLE_COLUMNS } from "./LessonRegister.jsx";
-import ActivityLog from "./ActivityLog.jsx";
-import "./LessonsPage.css";
-import "./ActivityLog.css";
+import ProjectOverview, { AttentionControls } from "./overview/ProjectOverview.jsx";
+import RiskControls from "./risks/RiskSection.jsx";
+import RequestSection from "./requests/RequestSection.jsx";
+import RequestDetailPage from "./requests/RequestDetailPage.jsx";
+import ActivityReview from "./activities/ActivityReview.jsx";
+import LessonRegister, { LESSON_TABLE_COLUMNS } from "./lessons/LessonRegister.jsx";
+import ActivityLog from "./activities/ActivityLog.jsx";
+import "./lessons/LessonsPage.css";
+import "./activities/ActivityLog.css";
 import {
   CostChart,
   CostOutlook,
@@ -56,13 +65,13 @@ import {
   getPhaseExpenditures,
   getPhaseCategoryBreakdown,
   CATEGORY_CONFIG,
-} from "./CostAnalysis.jsx";
-import ProjectsList, { LoadingState } from "./ProjectsList.jsx";
+} from "./costs/CostAnalysis.jsx";
+import ProjectsList, { LoadingState } from "./list/ProjectsList.jsx";
 import MilestoneSection, {
   TaskTable,
   TaskLog,
   getTaskLog,
-} from "./MilestoneSection.jsx";
+} from "./milestones/MilestoneSection.jsx";
 
 // Re-exports for modular backwards-compatibility
 export {
@@ -162,39 +171,18 @@ function NotFound({ onBack }) {
 }
 
 export default function ProjectsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initialRoute = parseProjectRoute(location.pathname, location.search);
   const [projects, setProjects] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [projectLoadError, setProjectLoadError] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState(() => {
-    const match = window.location.pathname.match(
-      /\/projects\/([a-zA-Z0-9_-]+)/,
-    );
-    return match ? match[1] : null;
-  });
-
-  const [selectedRequestId, setSelectedRequestId] = useState(() => {
-    const reqMatch = window.location.pathname.match(
-      /\/projects\/[a-zA-Z0-9_-]+\/requests\/([a-zA-Z0-9_-]+)/,
-    );
-    return reqMatch ? reqMatch[1] : null;
-  });
-
-  const [selectedActivityId, setSelectedActivityId] = useState(() => {
-    const activityMatch = window.location.pathname.match(
-      /\/projects\/[a-zA-Z0-9_-]+\/activity\/([a-zA-Z0-9_-]+)/,
-    );
-    return activityMatch ? activityMatch[1] : null;
-  });
-
-  const [costAnalysisPhase, setCostAnalysisPhase] = useState(() => {
-    if (window.location.pathname.includes("/costs")) {
-      const urlParams = new URLSearchParams(window.location.search);
-      return urlParams.get("phase") || "Construction";
-    }
-    return null;
-  });
+  const [selectedProjectId, setSelectedProjectId] = useState(initialRoute.projectId);
+  const [selectedRequestId, setSelectedRequestId] = useState(initialRoute.requestId);
+  const [selectedActivityId, setSelectedActivityId] = useState(initialRoute.activityId);
+  const [costAnalysisPhase, setCostAnalysisPhase] = useState(initialRoute.costPhase);
 
   const loadData = async () => {
     try {
@@ -236,33 +224,19 @@ export default function ProjectsPage() {
   };
 
   useEffect(() => {
-    const handlePopState = () => {
-      const match = window.location.pathname.match(
-        /\/projects\/([a-zA-Z0-9_-]+)/,
-      );
-      const isCostPage = window.location.pathname.includes("/costs");
-      setSelectedProjectId(match ? match[1] : null);
-      const activityMatch = window.location.pathname.match(
-        /\/activity\/([a-zA-Z0-9_-]+)/,
-      );
-      setSelectedActivityId(activityMatch ? activityMatch[1] : null);
-      if (isCostPage) {
-        const urlParams = new URLSearchParams(window.location.search);
-        setCostAnalysisPhase(urlParams.get("phase") || "Construction");
-      } else {
-        setCostAnalysisPhase(null);
-      }
-    };
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+    const route = parseProjectRoute(location.pathname, location.search);
+    setSelectedProjectId(route.projectId);
+    setSelectedActivityId(route.activityId);
+    setSelectedRequestId(route.requestId);
+    setCostAnalysisPhase(route.costPhase);
+  }, [location.pathname, location.search]);
 
   const handleSelectProject = (id) => {
     setSelectedProjectId(id);
     setCostAnalysisPhase(null);
     setSelectedRequestId(null);
     setSelectedActivityId(null);
-    window.history.pushState(null, "", `/projects/${id}`);
+    navigate(projectPath(id));
   };
 
   const handleBackToProjects = () => {
@@ -270,36 +244,28 @@ export default function ProjectsPage() {
     setCostAnalysisPhase(null);
     setSelectedRequestId(null);
     setSelectedActivityId(null);
-    window.history.pushState(null, "", "/projects");
+    navigate(projectsPath);
   };
 
   const handleOpenCostAnalysis = (phase) => {
     const targetPhase = phase || "Construction";
     setCostAnalysisPhase(targetPhase);
-    window.history.pushState(
-      null,
-      "",
-      `/projects/${selectedProjectId}/costs?phase=${encodeURIComponent(targetPhase)}`,
-    );
+    navigate(costAnalysisPath(selectedProjectId, targetPhase));
   };
 
   const handleBackToProjectDetail = () => {
     setCostAnalysisPhase(null);
-    window.history.pushState(null, "", `/projects/${selectedProjectId}#costs`);
+    navigate(`${projectPath(selectedProjectId)}#costs`);
   };
 
   const handleSelectRequest = (requestId) => {
     setSelectedRequestId(requestId);
-    window.history.pushState(
-      null,
-      "",
-      `/projects/${selectedProjectId}/requests/${requestId}`,
-    );
+    navigate(requestDetailPath(selectedProjectId, requestId));
   };
 
   const handleBackToRequests = () => {
     setSelectedRequestId(null);
-    window.history.pushState(null, "", `/projects/${selectedProjectId}`);
+    navigate(`${projectPath(selectedProjectId)}#requests`);
     setTimeout(() => {
       window.location.hash = "requests";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
@@ -308,16 +274,12 @@ export default function ProjectsPage() {
 
   const handleSelectActivity = (activityId) => {
     setSelectedActivityId(activityId);
-    window.history.pushState(
-      null,
-      "",
-      `/projects/${selectedProjectId}/activity/${activityId}`,
-    );
+    navigate(activityReviewPath(selectedProjectId, activityId));
   };
 
   const handleBackToActivityLog = () => {
     setSelectedActivityId(null);
-    window.history.pushState(null, "", `/projects/${selectedProjectId}`);
+    navigate(`${projectPath(selectedProjectId)}#activity`);
     setTimeout(() => {
       window.location.hash = "activity";
       window.dispatchEvent(new HashChangeEvent("hashchange"));

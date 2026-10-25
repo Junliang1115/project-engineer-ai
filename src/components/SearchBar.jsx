@@ -1,6 +1,6 @@
 import React from "react";
 import { Search, X } from "lucide-react";
-import "../ProjectOverview.css";
+import "../pages/projects/overview/ProjectOverview.css";
 
 /**
  * SearchBar

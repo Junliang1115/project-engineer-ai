@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { filterActivitiesByDate } from "./activityLog.js";
-import { ListRow } from "./components/ListRow.jsx";
-import { FilterBar, FilterSelect } from "./components/FilterBar.jsx";
+import { ListRow } from "../../../components/ListRow.jsx";
+import { FilterBar, FilterSelect } from "../../../components/FilterBar.jsx";
 import "./ActivityLog.css";
 
 const DATE_RANGE_OPTIONS = [

@@ -1,5 +1,5 @@
 import React from "react";
-import "../LessonsPage.css";
+import "../pages/projects/lessons/LessonsPage.css";
 
 /**
  * ListTable

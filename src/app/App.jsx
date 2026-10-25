@@ -1,20 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { BarChart2, MessageSquare, Moon, Sun } from "lucide-react";
-import ChatPage from "./ChatPage.jsx";
-import AccountPage from "./AccountPage.jsx";
-import ProjectsPage from "./ProjectsPage.jsx";
-import brandLogo from "./assets/logo.svg";
-
-function getInitialPage() {
-  if (typeof window !== "undefined" && window.location.pathname.startsWith("/projects")) {
-    return "projects";
-  }
-  if (typeof window !== "undefined" && (window.location.pathname.startsWith("/account") || window.location.pathname.startsWith("/plugins"))) {
-    return "account";
-  }
-
-  return "chat";
-}
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import ChatPage from "../pages/chat/ChatPage.jsx";
+import AccountPage from "../pages/account/AccountPage.jsx";
+import ProjectsPage from "../pages/projects/ProjectsPage.jsx";
+import brandLogo from "../assets/logo.svg";
 
 function getInitialTheme() {
   if (typeof window === "undefined") return "dark";
@@ -24,14 +14,14 @@ function getInitialTheme() {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState(getInitialPage);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [theme, setTheme] = useState(getInitialTheme);
-
-  useEffect(() => {
-    const syncPageFromPath = () => setActivePage(getInitialPage());
-    window.addEventListener("popstate", syncPageFromPath);
-    return () => window.removeEventListener("popstate", syncPageFromPath);
-  }, []);
+  const activePage = location.pathname.startsWith("/projects")
+    ? "projects"
+    : location.pathname.startsWith("/account") || location.pathname.startsWith("/plugins")
+      ? "account"
+      : "chat";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -39,9 +29,8 @@ function App() {
   }, [theme]);
 
   const handleSelectPage = (page) => {
-    setActivePage(page);
     const path = page === "projects" ? "/projects" : page === "account" || page === "plugins" ? "/account" : "/";
-    window.history.pushState(null, "", path);
+    navigate(path);
   };
 
   return (
@@ -53,13 +42,17 @@ function App() {
         onToggleTheme={() => setTheme((current) => current === "dark" ? "light" : "dark")}
       />
       <main className="page page-chat">
-        {activePage === "projects" ? (
-          <ProjectsPage />
-        ) : activePage === "account" || activePage === "plugins" ? (
-          <AccountPage />
-        ) : (
-          <ChatPage />
-        )}
+        <Routes>
+          <Route path="/" element={<ChatPage />} />
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/plugins" element={<AccountPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId/costs" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId/activity/:activityId" element={<ProjectsPage />} />
+          <Route path="/projects/:projectId/requests/:requestId" element={<ProjectsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
     </div>
   );

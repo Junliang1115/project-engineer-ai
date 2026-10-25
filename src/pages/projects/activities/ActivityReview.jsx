@@ -24,7 +24,7 @@ import {
   documentFileUrl,
   fetchActivityEmail,
   fetchActivityReview,
-} from "./api.js";
+} from "../../../services/api.js";
 import {
   REVIEW_STATE_LABELS,
   buildEditedChanges,
@@ -34,7 +34,7 @@ import {
   formatValue,
   linkEvidence,
 } from "./activityReview.js";
-import BackButton from "./components/BackButton.jsx";
+import BackButton from "../../../components/BackButton.jsx";
 import "./ActivityReview.css";
 
 const initials = (from) =>

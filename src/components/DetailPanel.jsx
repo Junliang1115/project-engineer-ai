@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ChevronDown, Mail } from "lucide-react";
-import "../ProjectOverview.css";
+import "../pages/projects/overview/ProjectOverview.css";
 
 export function DetailPanelToggle({
   isOpen = false,

@@ -13,7 +13,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import "./ProjectSidebar.css";
-import { formatRefreshTimestamp } from "./refreshTimestamp.js";
+import { formatRefreshTimestamp } from "../../utils/refreshTimestamp.js";
 
 const sectionIds = new Set([
   "overview",

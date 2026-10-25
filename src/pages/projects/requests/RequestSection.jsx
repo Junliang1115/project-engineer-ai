@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { FileDiff, FileQuestion } from "lucide-react";
-import { ListRow } from "./components/ListRow.jsx";
-import { Tag } from "./components/Tag.jsx";
-import { FilterBar, FilterSegment } from "./components/FilterBar.jsx";
+import { ListRow } from "../../../components/ListRow.jsx";
+import { Tag } from "../../../components/Tag.jsx";
+import { FilterBar, FilterSegment } from "../../../components/FilterBar.jsx";
 import "./RequestSection.css";
 
 const categories = ["All", "Technical Query", "Change Order"];

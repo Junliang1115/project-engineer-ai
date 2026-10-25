@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ChevronDown, AlertCircle, Mail } from "lucide-react";
-import { Tag, StatusTag } from "./components/Tag.jsx";
-import { Button } from "./components/Button.jsx";
-import { FilterBar, FilterSelect } from "./components/FilterBar.jsx";
+import { Tag, StatusTag } from "../../../components/Tag.jsx";
+import { Button } from "../../../components/Button.jsx";
+import { FilterBar, FilterSelect } from "../../../components/FilterBar.jsx";
 
 const money = (value, compact = false) =>
   compact
@@ -12,8 +12,8 @@ const money = (value, compact = false) =>
         currency: "USD",
         maximumFractionDigits: 0,
       }).format(value);
-import Rail from "./components/Rail.jsx";
-import { DetailPanel } from "./components/DetailPanel.jsx";
+import Rail from "../../../components/Rail.jsx";
+import { DetailPanel } from "../../../components/DetailPanel.jsx";
 export { Rail, DetailPanel };
 
 // Helper to determine the current active milestone gate

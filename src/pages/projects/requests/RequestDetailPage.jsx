@@ -12,8 +12,8 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { documentFileUrl } from "./api.js";
-import BackButton from "./components/BackButton.jsx";
+import { documentFileUrl } from "../../../services/api.js";
+import BackButton from "../../../components/BackButton.jsx";
 import "./RequestDetail.css";
 
 // Request detail, "reasoning-first" layout (design option 1c): the original document on the
