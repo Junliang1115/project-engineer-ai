@@ -9,7 +9,7 @@ from openpyxl import Workbook
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from backend.sharepoint_service import (
+from backend.integrations.sharepoint_service import (
     SharePointConfig,
     SharePointError,
     SharePointService,

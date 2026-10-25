@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildProjectOverview } from "../src/projectOverviewModel.js";
+import { buildProjectOverview } from "../src/pages/projects/overview/projectOverviewModel.js";
 
 const overview = buildProjectOverview(
   {
@@ -8,14 +8,14 @@ const overview = buildProjectOverview(
     budget: 18.5,
     costs: [{ phase: "Construction", estimate: 18.5, actual: 20 }],
     milestones: [
-      { name: "Foundation", status: "Complete", forecastDate: "2026-09-01" },
+      { name: "Foundation", status: "Completed", forecastDate: "2026-09-01" },
       { name: "Commissioning readiness", status: "Blocked", forecastDate: "2026-10-22" },
     ],
     tasks: [
       { id: "TSK-1", title: "Close safety evidence", status: "In progress", owner: "Safety lead", due_date: "2026-10-10" },
     ],
     risks: [
-      { id: "RSK-1", title: "Late equipment release", impact: "High", status: "Open", owner: "Procurement lead", dueDate: "2026-10-18" },
+      { id: "RSK-001", title: "Late equipment release", impact: "High", status: "Open", owner: "Procurement lead", dueDate: "2026-10-18" },
     ],
     activities: [
       { id: "ACT-1", summary: "Drawing revision received", received: "2026-10-15 09:00", from: "Design lead" },

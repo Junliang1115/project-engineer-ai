@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const sidebarJsx = readFileSync(new URL("../src/ProjectSidebar.jsx", import.meta.url), "utf8");
+const sidebarJsx = readFileSync(new URL("../src/pages/projects/ProjectSidebar.jsx", import.meta.url), "utf8");
 
 // Extract and test resolveProjectSection directly from ProjectSidebar.jsx
 const fnMatch = sidebarJsx.match(/const sectionIds = new Set\(\[[\s\S]*?export function resolveProjectSection\(hash = ""\) \{[\s\S]*?\n\}/);

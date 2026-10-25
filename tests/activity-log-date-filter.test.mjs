@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { filterActivitiesByDate } from "../src/activityLog.js";
+import { filterActivitiesByDate } from "../src/pages/projects/activities/activityLog.js";
 
 const now = new Date("2026-10-16T12:00:00");
 const activities = [

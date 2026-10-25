@@ -2,7 +2,7 @@ import unittest
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from backend.database import (
+from backend.projects.database import (
     _activity_payload,
     _expenditure_payload,
     _request_payload,
@@ -69,10 +69,23 @@ class DatabasePayloadTest(unittest.TestCase):
             })
             self.assertEqual(payload["category"], category)
             self.assertEqual(payload["createdAt"], "2026-09-13T08:30:00+00:00")
+            self.assertNotIn("documentId", payload)  # No stored PDF for this request.
+
+    def test_request_with_its_stored_document(self):
+        row = {"request_id": "TQ-2026-1020", "title": "Valve certification", "request_type": "technical_query",
+               "description": "EN 10204 3.1 instead of 3.2", "status": "open", "created_at": None}
+        document = {"document_id": "0b4c", "filename": "KNJTC4-TEQ-0001.pdf", "size_bytes": 254_000,
+                    "page_count": 2, "status": "parsed", "sender": "Chew Jun Liang <jl@example.com>"}
+        payload = _request_payload(row, document)
+        self.assertEqual(
+            {key: payload[key] for key in ("documentId", "attachmentName", "attachmentSize", "attachmentPages", "submittedBy")},
+            {"documentId": "0b4c", "attachmentName": "KNJTC4-TEQ-0001.pdf", "attachmentSize": "248 KB",
+             "attachmentPages": 2, "submittedBy": "Chew Jun Liang <jl@example.com>"},
+        )
 
     def test_risk(self):
         payload = _risk_payload({
-            "risk_code": "RSK-01",
+            "risk_id": "RSK-001",
             "title": "Late equipment release",
             "category": "Procurement",
             "likelihood": "Likely",
@@ -88,7 +101,7 @@ class DatabasePayloadTest(unittest.TestCase):
             "confidence": "Medium",
             "affected_areas": ["Schedule", "Cost"],
             "priority": "high",
-        }, 0)
+        })
         self.assertEqual(payload["affectedAreas"], ["Schedule", "Cost"])
         self.assertEqual(payload["priority"], "High")
 

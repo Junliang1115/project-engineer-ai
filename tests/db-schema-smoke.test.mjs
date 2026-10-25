@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 
 const schema = readFileSync(new URL("../backend/db/schema.sql", import.meta.url), "utf8");
 const seed = readFileSync(new URL("../backend/db/seed.sql", import.meta.url), "utf8");
-const readme = readFileSync(new URL("../backend/db/README.md", import.meta.url), "utf8");
 
 [
   "project",
@@ -22,7 +21,12 @@ const readme = readFileSync(new URL("../backend/db/README.md", import.meta.url),
 
 assert.match(schema, /create table if not exists expenditure\b/i);
 assert.match(seed, /insert into\s+expenditure\b/i);
-assert.equal((seed.match(/'EXP-[CFDPH]\d{2}'/g) || []).length, 30);
+assert.equal((seed.match(/'EXP-\d{3}'/g) || []).length, 30);
+// Readable IDs are zero-padded: phases to 2 digits, milestones, expenditures and risks to 3.
+assert.doesNotMatch(seed, /'(P|M|EXP|RSK)-[1-9]\d?'/);
+assert.match(schema, /create or replace function format_project_entity_id/i);
+assert.match(schema, /check \(milestone_id ~ '\^M-\(\(\?!0\+\$\)\[0-9\]\{3\}\|\[1-9\]\[0-9\]\{3,\}\)\$'\)/);
+assert.equal((schema.match(/on update cascade/gi) || []).length, 5);
 assert.doesNotMatch(schema.match(/create table if not exists expenditure[\s\S]*?\);/i)?.[0] || "", /\bcurrency\b/i);
 
 assert.doesNotMatch(schema, /\bcreate table if not exists workforce\b/i);
@@ -40,6 +44,17 @@ assert.doesNotMatch(schema, /\bseverity\b/i);
 assert.doesNotMatch(schema, /\bprobability\b/i);
 assert.doesNotMatch(schema, /,\s*\)/);
 assert.doesNotMatch(schema, /\bcreate table if not exists documents\b/i);
+// Stored PDFs (backend/document_store.py): one row per file, its sources, and its parsed pages.
+["document", "document_source", "document_page"].forEach((table) => {
+  assert.match(schema, new RegExp(`create table if not exists ${table} \\(`, "i"));
+});
+
+const allowedWorkStatuses = "'planned', 'in_progress', 'completed', 'blocked'";
+assert.match(schema, new RegExp(`constraint milestone_status_check check \\(status in \\(${allowedWorkStatuses}\\)\\)`, "i"));
+assert.match(schema, new RegExp(`constraint project_task_status_check check \\(status in \\(${allowedWorkStatuses}\\)\\)`, "i"));
+const milestoneSeed = seed.match(/insert into milestone[\s\S]*?insert into project_task/i)?.[0] || "";
+assert.doesNotMatch(milestoneSeed, /'active'/i);
+assert.match(milestoneSeed, /'in_progress'/i);
 
 assert.doesNotMatch(schema, /agent_runs/i);
 assert.doesNotMatch(schema, /agent_findings/i);
@@ -54,5 +69,4 @@ assert.doesNotMatch(seed, /\bcompliance_checks\b/i);
 assert.match(seed, /insert into request \(request_id, project_id, title, request_type, description, status\)/i);
 assert.match(seed, /'change_order'/i);
 assert.doesNotMatch(seed, /requested_change/i);
-assert.match(readFileSync(new URL("../backend/database.py", import.meta.url), "utf8"), /set status = %s, progress_percent = %s\s+where phase_id = %s and project_id = %s/i);
-assert.match(readme, /psql/i);
+assert.match(readFileSync(new URL("../backend/projects/database.py", import.meta.url), "utf8"), /set status = %s, progress_percent = %s\s+where phase_id = %s and project_id = %s/i);

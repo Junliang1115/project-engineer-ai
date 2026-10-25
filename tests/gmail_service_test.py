@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from backend.gmail_service import (
+from backend.integrations.gmail_service import (
     GmailConfig,
     GmailError,
     GmailService,
@@ -190,6 +190,14 @@ class GmailServiceTest(unittest.TestCase):
         self.assertTrue(saved_file.exists())
         self.assertEqual(saved_file.read_bytes(), file_bytes)
         self.assertEqual(downloads[0]["filename"], "pipe_spec.pdf")
+
+    def test_get_attachment_bytes_returns_content_without_saving(self):
+        file_bytes = b"%PDF-1.4 inspection report"
+        svc = GmailService(config=self.config, service=FakeGmailService(attachments={"att-1": file_bytes}))
+        self.assertEqual(svc.get_attachment_bytes("msg-1", "att-1"), file_bytes)
+        self.assertFalse(self.config.download_dir.exists())
+        with self.assertRaises(GmailError):
+            svc.get_attachment_bytes("msg-1", "")
 
     def test_backward_compatibility_functions(self):
         fake_api = FakeGmailService()

@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.mcp_servers import mcp_sharepoint_server as server_module
-from backend.sharepoint_service import SharePointError
+from backend.integrations.sharepoint_service import SharePointError
 
 
 class SharePointMcpServerTest(unittest.TestCase):
