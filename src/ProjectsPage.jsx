@@ -12,12 +12,12 @@ import { Progress } from "./components/Progress.jsx";
 import { filterActivitiesByDate } from "./activityLog.js";
 
 export const phases = [
-  'Concept',
-  'Feasibility',
-  'Design',
-  'Procurement',
-  'Construction',
-  'Handover',
+  "Concept",
+  "Feasibility",
+  "Design",
+  "Procurement",
+  "Construction",
+  "Handover",
 ];
 
 export const phaseIndex = (phase) => phases.indexOf(phase);
@@ -34,16 +34,17 @@ export const money = (value, compact = false) =>
   compact
     ? `$${value.toFixed(value % 1 ? 1 : 0)}M`
     : new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value);
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }).format(value);
 
 import ProjectSidebar from "./ProjectSidebar.jsx";
 import ProjectOverview, { AttentionControls } from "./ProjectOverview.jsx";
 import RiskControls from "./RiskSection.jsx";
 import RequestSection from "./RequestSection.jsx";
 import RequestDetailPage from "./RequestDetailPage.jsx";
+import ActivityReview from "./ActivityReview.jsx";
 import LessonRegister, { LESSON_TABLE_COLUMNS } from "./LessonRegister.jsx";
 import ActivityLog from "./ActivityLog.jsx";
 import "./LessonsPage.css";
@@ -62,7 +63,6 @@ import MilestoneSection, {
   TaskLog,
   getTaskLog,
 } from "./MilestoneSection.jsx";
-
 
 // Re-exports for modular backwards-compatibility
 export {
@@ -88,7 +88,13 @@ export {
   ActivityLog,
 };
 
-export function ProjectDetail({ project, onBack, onOpenCostAnalysis, onSelectRequest }) {
+export function ProjectDetail({
+  project,
+  onBack,
+  onOpenCostAnalysis,
+  onSelectRequest,
+  onSelectActivity,
+}) {
   const [costPhase, setCostPhase] = useState(project.phase || "Construction");
 
   const handleExploreMore = (phase) => {
@@ -104,19 +110,37 @@ export function ProjectDetail({ project, onBack, onOpenCostAnalysis, onSelectReq
       project={project}
       onBack={onBack}
       sections={{
-        overview: <ProjectOverview project={project} onExploreMore={handleExploreMore} />,
+        overview: (
+          <ProjectOverview
+            project={project}
+            onExploreMore={handleExploreMore}
+          />
+        ),
         milestones: <MilestoneSection project={project} />,
         costs: (
           <>
             <div className="section-page-header">
-              <h1>Cost tracking</h1>
+              <div>
+                <h1>Cost tracking</h1>
+                <p className="section-page-description">
+                  Monitor planned budgets, actual spending, and cost variance.
+                </p>
+              </div>
             </div>
-            <CostAnalysisPage project={project} initialPhase={costPhase} isEmbedded={true} />
+            <CostAnalysisPage
+              project={project}
+              initialPhase={costPhase}
+              isEmbedded={true}
+            />
           </>
         ),
-        requests: <RequestSection project={project} onSelectRequest={onSelectRequest} />,
+        requests: (
+          <RequestSection project={project} onSelectRequest={onSelectRequest} />
+        ),
         risks: <RiskControls project={project} />,
-        activity: <ActivityLog project={project} />,
+        activity: (
+          <ActivityLog project={project} onSelectActivity={onSelectActivity} />
+        ),
         lessons: <LessonRegister project={project} />,
       }}
     />
@@ -144,13 +168,24 @@ export default function ProjectsPage() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [projectLoadError, setProjectLoadError] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState(() => {
-    const match = window.location.pathname.match(/\/projects\/([a-zA-Z0-9_-]+)/);
+    const match = window.location.pathname.match(
+      /\/projects\/([a-zA-Z0-9_-]+)/,
+    );
     return match ? match[1] : null;
   });
 
   const [selectedRequestId, setSelectedRequestId] = useState(() => {
-    const reqMatch = window.location.pathname.match(/\/projects\/[a-zA-Z0-9_-]+\/requests\/([a-zA-Z0-9_-]+)/);
+    const reqMatch = window.location.pathname.match(
+      /\/projects\/[a-zA-Z0-9_-]+\/requests\/([a-zA-Z0-9_-]+)/,
+    );
     return reqMatch ? reqMatch[1] : null;
+  });
+
+  const [selectedActivityId, setSelectedActivityId] = useState(() => {
+    const activityMatch = window.location.pathname.match(
+      /\/projects\/[a-zA-Z0-9_-]+\/activity\/([a-zA-Z0-9_-]+)/,
+    );
+    return activityMatch ? activityMatch[1] : null;
   });
 
   const [costAnalysisPhase, setCostAnalysisPhase] = useState(() => {
@@ -202,9 +237,15 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     const handlePopState = () => {
-      const match = window.location.pathname.match(/\/projects\/([a-zA-Z0-9_-]+)/);
+      const match = window.location.pathname.match(
+        /\/projects\/([a-zA-Z0-9_-]+)/,
+      );
       const isCostPage = window.location.pathname.includes("/costs");
       setSelectedProjectId(match ? match[1] : null);
+      const activityMatch = window.location.pathname.match(
+        /\/activity\/([a-zA-Z0-9_-]+)/,
+      );
+      setSelectedActivityId(activityMatch ? activityMatch[1] : null);
       if (isCostPage) {
         const urlParams = new URLSearchParams(window.location.search);
         setCostAnalysisPhase(urlParams.get("phase") || "Construction");
@@ -220,6 +261,7 @@ export default function ProjectsPage() {
     setSelectedProjectId(id);
     setCostAnalysisPhase(null);
     setSelectedRequestId(null);
+    setSelectedActivityId(null);
     window.history.pushState(null, "", `/projects/${id}`);
   };
 
@@ -227,6 +269,7 @@ export default function ProjectsPage() {
     setSelectedProjectId(null);
     setCostAnalysisPhase(null);
     setSelectedRequestId(null);
+    setSelectedActivityId(null);
     window.history.pushState(null, "", "/projects");
   };
 
@@ -236,7 +279,7 @@ export default function ProjectsPage() {
     window.history.pushState(
       null,
       "",
-      `/projects/${selectedProjectId}/costs?phase=${encodeURIComponent(targetPhase)}`
+      `/projects/${selectedProjectId}/costs?phase=${encodeURIComponent(targetPhase)}`,
     );
   };
 
@@ -247,7 +290,11 @@ export default function ProjectsPage() {
 
   const handleSelectRequest = (requestId) => {
     setSelectedRequestId(requestId);
-    window.history.pushState(null, "", `/projects/${selectedProjectId}/requests/${requestId}`);
+    window.history.pushState(
+      null,
+      "",
+      `/projects/${selectedProjectId}/requests/${requestId}`,
+    );
   };
 
   const handleBackToRequests = () => {
@@ -257,6 +304,32 @@ export default function ProjectsPage() {
       window.location.hash = "requests";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     }, 0);
+  };
+
+  const handleSelectActivity = (activityId) => {
+    setSelectedActivityId(activityId);
+    window.history.pushState(
+      null,
+      "",
+      `/projects/${selectedProjectId}/activity/${activityId}`,
+    );
+  };
+
+  const handleBackToActivityLog = () => {
+    setSelectedActivityId(null);
+    window.history.pushState(null, "", `/projects/${selectedProjectId}`);
+    setTimeout(() => {
+      window.location.hash = "activity";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }, 0);
+  };
+
+  const refreshProjects = async () => {
+    try {
+      setProjects(await fetchProjects());
+    } catch (error) {
+      console.error("Refresh error:", error);
+    }
   };
 
   let content;
@@ -272,8 +345,14 @@ export default function ProjectsPage() {
       </main>
     );
   } else if (selectedProjectId) {
-    const projectRecord = projects.find((p) => p.id === selectedProjectId || p.id === resolveProjectId(selectedProjectId));
-    const project = projectRecord ? { ...projectRecord, latestRefresh: lastUpdated } : null;
+    const projectRecord = projects.find(
+      (p) =>
+        p.id === selectedProjectId ||
+        p.id === resolveProjectId(selectedProjectId),
+    );
+    const project = projectRecord
+      ? { ...projectRecord, latestRefresh: lastUpdated }
+      : null;
     if (!project) {
       content = <NotFound onBack={handleBackToProjects} />;
     } else if (costAnalysisPhase) {
@@ -284,10 +363,23 @@ export default function ProjectsPage() {
           onBack={handleBackToProjectDetail}
         />
       );
+    } else if (selectedActivityId) {
+      content = (
+        <ActivityReview
+          activityId={selectedActivityId}
+          onBack={handleBackToActivityLog}
+          onReviewed={refreshProjects}
+        />
+      );
     } else if (selectedRequestId) {
-      const detailRequest = (project.requests || []).find((r) => r.id === selectedRequestId);
+      const detailRequest = (project.requests || []).find(
+        (r) => r.id === selectedRequestId,
+      );
       content = detailRequest ? (
-        <RequestDetailPage request={detailRequest} onBack={handleBackToRequests} />
+        <RequestDetailPage
+          request={detailRequest}
+          onBack={handleBackToRequests}
+        />
       ) : (
         <NotFound onBack={handleBackToProjects} />
       );
@@ -298,6 +390,7 @@ export default function ProjectsPage() {
           onBack={handleBackToProjects}
           onOpenCostAnalysis={handleOpenCostAnalysis}
           onSelectRequest={handleSelectRequest}
+          onSelectActivity={handleSelectActivity}
         />
       );
     }

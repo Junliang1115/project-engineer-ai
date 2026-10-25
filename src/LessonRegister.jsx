@@ -185,7 +185,12 @@ export default function LessonRegister({
     <section className={`lessons-page ${isProjectMode ? "issues-page" : ""}`}>
       {isProjectMode ? (
         <div className="section-page-header">
-          <h1>Lesson learned</h1>
+          <div>
+            <h1>Lesson learned</h1>
+            <p className="section-page-description">
+              Capture project experience, root causes, and reusable insights.
+            </p>
+          </div>
           <div className="section-header-actions">
             <span className="section-header-badge">{visible.length} lessons</span>
           </div>

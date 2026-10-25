@@ -16,40 +16,41 @@ import "./ProjectOverview.css";
 
 const usdMillions = (value) => `$${value.toFixed(1)}M`;
 
+// Categorical series colours: the --chart-* tokens in App.css (dark and light values).
 export const CHART_COLORS = [
-  "#3A9CC4",
-  "#F59E0B",
-  "#3FB97A",
-  "#9B8CF0",
-  "#E36D8A",
-  "#8FA3B0",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
 ];
 
 export const CATEGORY_CONFIG = {
   Materials: {
     label: "Materials",
-    color: "#3A9CC4",
-    lightColor: "rgba(58, 156, 196, 0.15)",
+    color: "var(--chart-1)",
+    lightColor: "color-mix(in srgb, var(--chart-1) 15%, transparent)",
   },
   "Salaries & Labor": {
     label: "Salaries & Labor",
-    color: "#3FB97A",
-    lightColor: "rgba(63, 185, 122, 0.15)",
+    color: "var(--chart-3)",
+    lightColor: "color-mix(in srgb, var(--chart-3) 15%, transparent)",
   },
   Subcontractors: {
     label: "Subcontractors",
-    color: "#9B8CF0",
-    lightColor: "rgba(155, 140, 240, 0.15)",
+    color: "var(--chart-4)",
+    lightColor: "color-mix(in srgb, var(--chart-4) 15%, transparent)",
   },
   "Equipment & Plant": {
     label: "Equipment & Plant",
-    color: "#F59E0B",
-    lightColor: "rgba(245, 158, 11, 0.15)",
+    color: "var(--chart-2)",
+    lightColor: "color-mix(in srgb, var(--chart-2) 15%, transparent)",
   },
   "Permits & Fees": {
     label: "Permits & Fees",
-    color: "#E36D8A",
-    lightColor: "rgba(227, 109, 138, 0.15)",
+    color: "var(--chart-5)",
+    lightColor: "color-mix(in srgb, var(--chart-5) 15%, transparent)",
   },
 };
 
@@ -120,8 +121,8 @@ export function getPhaseCategoryBreakdown(expenditures) {
   return categories.map((catKey) => {
     const config = CATEGORY_CONFIG[catKey] || {
       label: catKey,
-      color: "#9ca3af",
-      lightColor: "rgba(156,163,175,0.15)",
+      color: "var(--text-secondary)",
+      lightColor: "color-mix(in srgb, var(--text-secondary) 15%, transparent)",
     };
     const items = expenditures.filter((i) => i.category === catKey);
     const catEstimate =
@@ -223,13 +224,13 @@ export function CostChart({ project, onExploreMore }) {
                   y1={y}
                   x2={chartWidth - paddingRight}
                   y2={y}
-                  stroke="#373c40"
+                  stroke="var(--border)"
                   strokeWidth="1"
                 />
                 <text
                   x={paddingLeft - 8}
                   y={y + 4}
-                  fill="#a9b0b5"
+                  fill="var(--text-secondary)"
                   fontSize="11"
                   textAnchor="end"
                   fontFamily='"IBM Plex Mono", monospace'
@@ -264,7 +265,7 @@ export function CostChart({ project, onExploreMore }) {
                   height={innerHeight}
                   fill={
                     isSelected && isExploring
-                      ? "rgba(231, 166, 59, 0.12)"
+                      ? "var(--accent-tint)"
                       : isHovered
                         ? "rgba(255, 255, 255, 0.04)"
                         : "transparent"
@@ -277,7 +278,7 @@ export function CostChart({ project, onExploreMore }) {
                   y={estY}
                   width={barWidth}
                   height={Math.max(0, estHeight)}
-                  fill="#8d969d"
+                  fill="var(--text-secondary)"
                   rx="2"
                   ry="2"
                   className="cost-chart-bar"
@@ -288,7 +289,7 @@ export function CostChart({ project, onExploreMore }) {
                   y={actY}
                   width={barWidth}
                   height={Math.max(0, actHeight)}
-                  fill="#e7a63b"
+                  fill="var(--accent)"
                   rx="2"
                   ry="2"
                   className="cost-chart-bar"
@@ -297,7 +298,7 @@ export function CostChart({ project, onExploreMore }) {
                 <text
                   x={centerX}
                   y={paddingTop + innerHeight + 20}
-                  fill={isSelected && isExploring ? "var(--accent)" : "#a9b0b5"}
+                  fill={isSelected && isExploring ? "var(--accent)" : "var(--text-secondary)"}
                   fontWeight={isSelected && isExploring ? "600" : "400"}
                   fontSize="11"
                   textAnchor="middle"
@@ -312,8 +313,8 @@ export function CostChart({ project, onExploreMore }) {
                       y={Math.max(5, Math.min(estY, actY) - 50)}
                       width="130"
                       height="44"
-                      fill="#25292c"
-                      stroke="#4b5155"
+                      fill="var(--surface-raised)"
+                      stroke="var(--border-strong)"
                       strokeWidth="1"
                       rx="4"
                     />
@@ -323,7 +324,7 @@ export function CostChart({ project, onExploreMore }) {
                         10
                       }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 16}
-                      fill="#8d969d"
+                      fill="var(--text-secondary)"
                       fontSize="11"
                     >
                       Estimate: ${c.estimate}M
@@ -334,7 +335,7 @@ export function CostChart({ project, onExploreMore }) {
                         10
                       }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 34}
-                      fill="#e7a63b"
+                      fill="var(--accent)"
                       fontSize="11"
                     >
                       Actual: ${c.actual}M
@@ -349,14 +350,14 @@ export function CostChart({ project, onExploreMore }) {
           <div className="chart-legend-item">
             <span
               className="chart-legend-color"
-              style={{ background: "#8d969d" }}
+              style={{ background: "var(--text-secondary)" }}
             />
             <span>Estimate</span>
           </div>
           <div className="chart-legend-item">
             <span
               className="chart-legend-color"
-              style={{ background: "#e7a63b" }}
+              style={{ background: "var(--accent)" }}
             />
             <span>Actual</span>
           </div>
@@ -544,7 +545,7 @@ export function PhasePieChart({
                 cy={cy}
                 r={(outerR + innerR) / 2}
                 fill="none"
-                stroke="#373c40"
+                stroke="var(--border)"
                 strokeWidth={outerR - innerR}
               />
             ) : (
@@ -583,7 +584,7 @@ export function PhasePieChart({
               })
             )}
 
-            <circle cx={cx} cy={cy} r={innerR - 2} fill="#181c1f" />
+            <circle cx={cx} cy={cy} r={innerR - 2} fill="var(--surface)" />
 
             <text
               x={cx}
@@ -680,14 +681,14 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
           <div className="chart-legend-item">
             <span
               className="chart-legend-color"
-              style={{ background: "#8d969d" }}
+              style={{ background: "var(--text-secondary)" }}
             />
             <span>Estimate</span>
           </div>
           <div className="chart-legend-item">
             <span
               className="chart-legend-color"
-              style={{ background: "#e7a63b" }}
+              style={{ background: "var(--accent)" }}
             />
             <span>Actual</span>
           </div>
@@ -711,13 +712,13 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                   y1={y}
                   x2={chartWidth - paddingRight}
                   y2={y}
-                  stroke="#373c40"
+                  stroke="var(--border)"
                   strokeWidth="1"
                 />
                 <text
                   x={paddingLeft - 8}
                   y={y + 4}
-                  fill="#a9b0b5"
+                  fill="var(--text-secondary)"
                   fontSize="11"
                   textAnchor="end"
                   fontFamily='"IBM Plex Mono", monospace'
@@ -752,7 +753,7 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                   height={innerHeight + 14}
                   fill={
                     isSelected
-                      ? "rgba(231, 166, 59, 0.12)"
+                      ? "var(--accent-tint)"
                       : isHovered
                         ? "rgba(255, 255, 255, 0.04)"
                         : "transparent"
@@ -774,7 +775,7 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                   y={estY}
                   width={barWidth}
                   height={Math.max(0, estHeight)}
-                  fill="#8d969d"
+                  fill="var(--text-secondary)"
                   rx="2"
                   ry="2"
                   className="cost-chart-bar"
@@ -785,7 +786,7 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                   y={actY}
                   width={barWidth}
                   height={Math.max(0, actHeight)}
-                  fill="#e7a63b"
+                  fill="var(--accent)"
                   rx="2"
                   ry="2"
                   className="cost-chart-bar"
@@ -794,7 +795,7 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                 <text
                   x={centerX}
                   y={paddingTop + innerHeight + 20}
-                  fill={isSelected ? "var(--accent)" : "#a9b0b5"}
+                  fill={isSelected ? "var(--accent)" : "var(--text-secondary)"}
                   fontWeight={isSelected ? "600" : "400"}
                   fontSize="11"
                   textAnchor="middle"
@@ -809,8 +810,8 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                       y={Math.max(5, Math.min(estY, actY) - 50)}
                       width="130"
                       height="44"
-                      fill="#25292c"
-                      stroke="#4b5155"
+                      fill="var(--surface-raised)"
+                      stroke="var(--border-strong)"
                       strokeWidth="1"
                       rx="4"
                     />
@@ -820,7 +821,7 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                         10
                       }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 16}
-                      fill="#8d969d"
+                      fill="var(--text-secondary)"
                       fontSize="11"
                     >
                       Estimate: ${c.estimate}M
@@ -831,7 +832,7 @@ export function PhaseCostGraph({ project, selectedPhase, onSelectPhase }) {
                         10
                       }
                       y={Math.max(5, Math.min(estY, actY) - 50) + 34}
-                      fill="#e7a63b"
+                      fill="var(--accent)"
                       fontSize="11"
                     >
                       Actual: ${c.actual}M
@@ -956,15 +957,15 @@ export function PhaseExpenseLedger({
             ) : (
               filtered.map((exp) => {
                 const catCfg = CATEGORY_CONFIG[exp.category] || {
-                  color: "#8d969d",
-                  lightColor: "rgba(141,150,157,0.15)",
+                  color: "var(--text-secondary)",
+                  lightColor: "color-mix(in srgb, var(--text-secondary) 15%, transparent)",
                 };
                 const isExpanded = expandedExpenditureId === exp.id;
                 return (
                   <React.Fragment key={exp.id}>
                     <tr>
                       <td>
-                        <strong style={{ color: "#f2f4f4" }}>
+                        <strong style={{ color: "var(--text)" }}>
                           {exp.title}
                         </strong>
                       </td>
@@ -974,13 +975,13 @@ export function PhaseExpenseLedger({
                           style={{
                             background: catCfg.lightColor,
                             color: catCfg.color,
-                            border: `1px solid ${catCfg.color}40`,
+                            border: `1px solid color-mix(in srgb, ${catCfg.color} 25%, transparent)`,
                           }}
                         >
                           {exp.category}
                         </span>
                       </td>
-                      <td style={{ color: "#c8ced2" }}>{exp.vendor}</td>
+                      <td style={{ color: "var(--text)" }}>{exp.vendor}</td>
                       <td className="num">${exp.estimate}M</td>
                       <td className="num">${exp.actual}M</td>
                       <td

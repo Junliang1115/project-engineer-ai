@@ -31,7 +31,7 @@
 :root[data-theme="light"] .conversation-topic:hover,
 :root[data-theme="light"] .conversation-topic.active,
 :root[data-theme="light"] .project-group-header:hover {
-  background: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+  background: var(--primary-tint) !important;
   color: var(--primary) !important;
 }
 :root[data-theme="light"] .chat-top-header {
@@ -68,7 +68,7 @@
 :root[data-theme="light"] .plus-dropdown-menu {
   background: var(--surface);
   border-color: var(--line);
-  box-shadow: 0 12px 30px rgba(20, 32, 43, 0.12);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--text) 12%, transparent);
 }
 :root[data-theme="light"] .chat-input-bar input,
 :root[data-theme="light"] .conversation-rename-input,
@@ -94,7 +94,7 @@
 :root[data-theme="light"] .account-hero-card {
   background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--surface)), var(--surface));
   border-color: var(--line);
-  box-shadow: 0 4px 18px rgba(20, 32, 43, 0.08);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--text) 8%, transparent);
 }
 :root[data-theme="light"] .account-source-card:hover { background: var(--surface-raised); border-color: var(--primary); }
 :root[data-theme="light"] .account-hero-title-row h1,
@@ -202,6 +202,6 @@
 /* Use primary petrol blue for selected navigation and primary controls. */
 :root[data-theme="light"] .capital-portfolio-wrapper .project-section-sidebar nav a[aria-current],
 :root[data-theme="light"] .capital-portfolio-wrapper .milestone-step.is-selected {
-  background: color-mix(in srgb, var(--primary) 11%, transparent);
+  background: var(--primary-tint);
   color: var(--primary);
 }

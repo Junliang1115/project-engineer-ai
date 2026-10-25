@@ -11,7 +11,7 @@ const DATE_RANGE_OPTIONS = [
   { value: "30days", label: "Last 30 days" },
 ];
 
-export function ActivityLog({ project }) {
+export function ActivityLog({ project, onSelectActivity }) {
   const activities = project?.activities || [];
   const [dateRange, setDateRange] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,7 +23,7 @@ export function ActivityLog({ project }) {
       [activity.title, activity.summary, activity.type, activity.source, activity.relatedTo, activity.status]
         .some((value) => String(value || "").toLowerCase().includes(query))
   );
-  const activityStatusOrder = { "Needs review": 0, Done: 1 };
+  const activityStatusOrder = { "Needs review": 0, Done: 1, Rejected: 2 };
   const sortedActivities = [...searchedActivities].sort(
     (a, b) => (activityStatusOrder[a.status] ?? 0) - (activityStatusOrder[b.status] ?? 0)
   );
@@ -63,23 +63,32 @@ export function ActivityLog({ project }) {
           {sortedActivities.length === 0 ? (
             <p className="activity-empty">No project updates match the selected filters.</p>
           ) : (
-            sortedActivities.map((activity) => (
-              <ListRow
-                key={activity.id}
-                className="activity-log-row"
-                leading={<span className="activity-type">{activity.type}</span>}
-                title={activity.title || activity.summary}
-                description={[activity.source, activity.relatedTo]}
-                trailing={
-                  <>
-                    <time>{activity.received || "Date unavailable"}</time>
-                    <span className={`activity-status is-${(activity.status || "").toLowerCase().replaceAll(" ", "-")}`}>
-                      {activity.status}
-                    </span>
-                  </>
-                }
-              />
-            ))
+            sortedActivities.map((activity) => {
+              // Gmail rows open the email review page (proposed changes, approve / edit / reject).
+              const canOpen = Boolean(onSelectActivity && activity.reviewable && activity.activityId);
+              const proposals = activity.proposalCount
+                ? `${activity.proposalCount} proposed change${activity.proposalCount > 1 ? "s" : ""}`
+                : null;
+              return (
+                <ListRow
+                  key={activity.id}
+                  as={canOpen ? "button" : "article"}
+                  onClick={canOpen ? () => onSelectActivity(activity.activityId) : undefined}
+                  className={`activity-log-row${canOpen ? " is-clickable" : ""}`}
+                  leading={<span className="activity-type">{activity.type}</span>}
+                  title={activity.title || activity.summary}
+                  description={[activity.source, activity.relatedTo, proposals]}
+                  trailing={
+                    <>
+                      <time>{activity.received || "Date unavailable"}</time>
+                      <span className={`activity-status is-${(activity.status || "").toLowerCase().replaceAll(" ", "-")}`}>
+                        {activity.status}
+                      </span>
+                    </>
+                  }
+                />
+              );
+            })
           )}
         </div>
       </section>

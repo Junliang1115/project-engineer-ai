@@ -7,7 +7,7 @@ const dateValue = (value) => {
 };
 
 const isClosed = (status = "") =>
-  ["closed", "complete", "completed"].includes(status.toLowerCase());
+  ["closed", "completed"].includes(status.toLowerCase());
 
 const dotColorForRisk = (priority = "", impact = "") => {
   const p = (priority || impact || "").toLowerCase();

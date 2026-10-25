@@ -3,7 +3,7 @@ import { BarChart2, MessageSquare, Moon, Sun } from "lucide-react";
 import ChatPage from "./ChatPage.jsx";
 import AccountPage from "./AccountPage.jsx";
 import ProjectsPage from "./ProjectsPage.jsx";
-import projectEngineerLogo from "./assets/logo.png";
+import brandLogo from "./assets/logo.svg";
 
 function getInitialPage() {
   if (typeof window !== "undefined" && window.location.pathname.startsWith("/projects")) {
@@ -68,9 +68,9 @@ function App() {
 function AppNavbar({ activePage, onSelectPage, theme, onToggleTheme }) {
   return (
     <header className="app-navbar" aria-label="Primary navigation">
-      <div className="app-brand" aria-label="Project Engineer home">
-        <img className="app-brand-mark" src={projectEngineerLogo} alt="" aria-hidden="true" />
-        <span className="app-brand-name">OIL AGENT</span>
+      <div className="app-brand" aria-label="Flowline home">
+        <span className="app-brand-mark" style={{ "--brand-logo": `url("${brandLogo}")` }} aria-hidden="true" />
+        <span className="app-brand-name">Flow<span className="app-brand-name-accent">line</span></span>
       </div>
 
       <nav className="app-nav-links" aria-label="Page navigation">

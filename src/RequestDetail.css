@@ -1,754 +1,443 @@
 /* ═══════════════════════════════════════════════════════════════════
-   RequestDetail.css — Two-panel request detail page
+   RequestDetail.css — request detail, "reasoning-first" layout (design 1c):
+   original document in a rounded panel on the left; the agent's read,
+   plan timeline, checks and actions on the right; reply edited in a dialog.
+   Colours and type come from the App.css tokens. The page opts out of the
+   global forced type rules, so its type scale is all here.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Shell ── */
 .rdp-shell {
-  /* ── Variable aliases: bridge project tokens → component tokens ── */
-  --surface-raised: var(--surface-2, #272c2f);
-  --border:         var(--line,      #3b4145);
-  --text-secondary: var(--muted,     #a9b0b5);
-  --primary:        var(--blue,      #55a7d9);
-  --info:           var(--blue,      #55a7d9);
-  --danger:         var(--red,       #ef6a6a);
-  --success:        var(--green,     #48b78a);
-  --warning:        #f59e0b;
-  --agent:          #9b8cf0;
-  /* ── Layout ── */
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  background: var(--bg);
+  /* Fill the screen below the app header, so the PDF panel gets the full height. */
+  height: calc(100vh - 3.5rem);
+  height: calc(100dvh - 3.5rem);
   overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  font-weight: 400;
+  line-height: var(--type-leading-body);
+  font-variant-numeric: tabular-nums;
 }
+.rdp-shell strong { font-weight: 600; }
 
-/* ══════════════════════════════════════════════════
-   TOP BAR
-══════════════════════════════════════════════════ */
+/* ══ Top bar (no rule — the panels below carry the edge) ══ */
 .rdp-topbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 20px;
-  height: 54px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--surface) 97%, var(--primary)) 0%,
-    var(--surface) 100%
-  );
+  gap: 16px;
+  padding: 12px 20px;
   flex-shrink: 0;
   flex-wrap: wrap;
 }
-
-.rdp-back-btn {
+.rdp-crumbs {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: color 0.15s, border-color 0.15s;
-}
-.rdp-back-btn:hover { color: var(--text); border-color: var(--text-secondary); }
-
-.rdp-topbar-div {
-  width: 1px;
-  height: 22px;
-  background: var(--border);
-  flex-shrink: 0;
-}
-
-.rdp-topbar-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex: 1;
   min-width: 0;
-  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: var(--type-description);
 }
-
-.rdp-type-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 5px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.rdp-type-query  {
-  background: color-mix(in srgb, var(--info)   14%, transparent);
-  color: var(--info);
-  border: 1px solid color-mix(in srgb, var(--info)   30%, transparent);
-}
-.rdp-type-change {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-}
-
-.rdp-topbar-id {
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
-.rdp-topbar-sep {
-  color: var(--border);
-  flex-shrink: 0;
-}
-
+.rdp-crumbs > svg { flex: none; }
+.rdp-topbar-id { color: var(--text-secondary); flex-shrink: 0; }
 .rdp-topbar-title {
-  color: var(--text);
-  white-space: nowrap;
+  margin: 0;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1;
-  margin: 0;
+  white-space: nowrap;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--type-description);
+  font-weight: 500;
+  line-height: var(--type-leading-title);
+  letter-spacing: 0;
 }
-
 .rdp-topbar-right {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-}
-
-.rdp-meta-chip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 5px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
   color: var(--text-secondary);
+  font-size: var(--type-caption);
 }
 
+.rdp-type-badge {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.rdp-type-query  { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); }
+.rdp-type-change { background: var(--accent-tint); color: var(--accent); }
+
+/* Status: outlined tag, as in the design */
 .rdp-status-chip {
   padding: 3px 10px;
-  border-radius: 20px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
   white-space: nowrap;
+  font-size: var(--type-caption);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
-.rdp-status-open           { background: color-mix(in srgb, var(--info)    14%, transparent); color: var(--info);    border: 1px solid color-mix(in srgb, var(--info)    28%, transparent); }
-.rdp-status-pending        { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent); }
-.rdp-status-pending-review { background: color-mix(in srgb, var(--accent)  14%, transparent); color: var(--accent);  border: 1px solid color-mix(in srgb, var(--accent)  28%, transparent); }
-.rdp-status-closed         { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 28%, transparent); }
-.rdp-status-approved       { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 28%, transparent); }
-.rdp-status-rejected       { background: color-mix(in srgb, var(--danger)  14%, transparent); color: var(--danger);  border: 1px solid color-mix(in srgb, var(--danger)  28%, transparent); }
+.rdp-status-open           { color: var(--info); }
+.rdp-status-pending        { color: var(--warning); }
+.rdp-status-review,
+.rdp-status-pending-review { color: var(--accent); }
+.rdp-status-closed,
+.rdp-status-approved       { color: var(--success); }
+.rdp-status-rejected       { color: var(--danger); }
 
-/* ══════════════════════════════════════════════════
-   BODY SPLIT
-══════════════════════════════════════════════════ */
+/* ══ Body split ══ */
 .rdp-body {
-  display: grid;
-  grid-template-columns: 2fr 3fr;
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 16px;
+  padding: 0 16px 16px;
 }
 
-/* ══════════════════════════════════════════════════
-   LEFT — PDF PANEL
-══════════════════════════════════════════════════ */
-.rdp-pdf-panel {
+/* ══ Left — original document ══ */
+.rdp-doc {
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
+  gap: 10px;
+  padding: 24px 26px;
+  border-radius: 14px;
   background: var(--surface);
   overflow: hidden;
 }
-
-.rdp-pdf-header {
+.rdp-doc-kicker {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-raised);
-  flex-shrink: 0;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: var(--type-caption);
 }
-
-.rdp-pdf-file-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--danger) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--danger);
-  flex-shrink: 0;
-}
-
-.rdp-pdf-info { flex: 1; min-width: 0; }
-
-.rdp-pdf-filename {
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.rdp-pdf-filemeta {
-  color: var(--muted);
-  margin-top: 1px;
-}
-
-.rdp-pdf-download {
-  display: flex;
+.rdp-doc-links { margin-left: auto; display: inline-flex; gap: 6px; }
+.rdp-doc-download {
+  display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 5px 10px;
-  border-radius: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  background: transparent;
   color: var(--text-secondary);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
   text-decoration: none;
-  flex-shrink: 0;
+  font-size: var(--type-caption);
+  font-weight: 500;
+  transition: color 0.15s, border-color 0.15s;
 }
-.rdp-pdf-download:hover { color: var(--text); border-color: var(--text-secondary); }
-
-.rdp-pdf-body { flex: 1; overflow: hidden; position: relative; background: #121212; }
-
-.rdp-pdf-frame { width: 100%; height: 100%; border: none; }
-
-.rdp-pdf-empty {
+.rdp-doc-download:hover { color: var(--text); border-color: var(--border-strong); }
+.rdp-doc-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-display);
+  font-size: var(--type-card-title);
+  font-weight: 500;
+  line-height: var(--type-leading-title);
+  letter-spacing: -0.01em;
+}
+.rdp-doc-meta { margin: 0; color: var(--text-secondary); font-size: var(--type-caption); }
+.rdp-doc-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 6px;
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.rdp-doc-frame { width: 100%; height: 100%; border: none; display: block; }
+/* Phone fallback for the iframe (shown only on small screens, see Responsive). */
+.rdp-doc-mobile {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.rdp-doc-mobile svg { color: var(--primary); }
+.rdp-doc-mobile strong { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
+.rdp-doc-mobile span { font-size: var(--type-caption); }
+.rdp-doc-empty {
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  height: 100%;
+  gap: 10px;
   padding: 32px;
   text-align: center;
-  color: var(--muted);
 }
-
-.rdp-pdf-empty-icon {
-  width: 56px;
-  height: 56px;
+.rdp-doc-empty-icon {
+  width: 52px;
+  height: 52px;
   border-radius: 14px;
-  background: var(--surface-raised);
-  border: 2px dashed var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--border-strong);
+  color: var(--text-faint);
+}
+.rdp-doc-empty p { margin: 0; color: var(--text-secondary); font-weight: 500; }
+.rdp-doc-empty span {
+  max-width: 260px;
+  color: var(--text-faint);
+  font-size: var(--type-description);
 }
 
-.rdp-pdf-empty p {
-  color: var(--text-secondary);
-  margin: 0;
-}
-.rdp-pdf-empty span {
-  color: var(--muted);
-  max-width: 240px;
-}
-
-/* ══════════════════════════════════════════════════
-   RIGHT — AGENT PANEL
-══════════════════════════════════════════════════ */
-.rdp-agent-panel {
+/* ══ Right — agent reasoning ══ */
+.rdp-agent {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 26px 30px;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  background: var(--bg);
+  gap: 22px;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
+/* Everything under the lead lines up with its text, past the avatar */
+.rdp-indent { padding-left: 48px; }
 
-/* ══ Summary card ══ */
-.rdp-summary-card {
-  margin: 16px 16px 0;
-  border-radius: 12px;
-  background: linear-gradient(135deg,
-    color-mix(in srgb, var(--agent) 14%, var(--surface)) 0%,
-    color-mix(in srgb, var(--agent)  6%, var(--surface)) 60%,
-    var(--surface) 100%
-  );
-  border: 1px solid color-mix(in srgb, var(--agent) 30%, var(--border));
-  overflow: hidden;
-  position: relative;
-  flex-shrink: 0;
-}
-
-/* ambient glow */
-.rdp-summary-card::before {
-  content: '';
-  position: absolute;
-  top: -20px;
-  right: -20px;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: radial-gradient(circle,
-    color-mix(in srgb, var(--agent) 20%, transparent) 0%,
-    transparent 70%
-  );
-  pointer-events: none;
-}
-
-.rdp-summary-inner {
-  padding: 16px 18px;
-  position: relative;
-  z-index: 1;
-}
-
-.rdp-summary-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.rdp-summary-avatar {
+.rdp-lead { display: flex; gap: 14px; align-items: flex-start; }
+.rdp-lead-avatar {
   width: 34px;
   height: 34px;
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--agent) 20%, transparent);
-  border: 1px solid color-mix(in srgb, var(--agent) 35%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--agent);
-  flex-shrink: 0;
-}
-
-.rdp-summary-meta { flex: 1; }
-.rdp-summary-meta h3 {
-  color: var(--agent);
-  margin: 0;
-}
-.rdp-summary-meta p {
-  color: var(--muted);
-  margin: 2px 0 0;
-}
-
-.rdp-processed-time {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--muted);
-  background: color-mix(in srgb, var(--agent) 8%, transparent);
-  padding: 3px 8px;
-  border-radius: 12px;
-  flex-shrink: 0;
-}
-
-.rdp-summary-body {
-  color: var(--text);
-  margin: 0 0 12px;
-}
-
-.rdp-summary-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.rdp-summary-tag {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  border-radius: 5px;
-}
-.rdp-stag-warning { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
-.rdp-stag-info    { background: color-mix(in srgb, var(--info)    12%, transparent); color: var(--info);    }
-.rdp-stag-success { background: color-mix(in srgb, var(--success) 12%, transparent); color: var(--success); }
-.rdp-stag-danger  { background: color-mix(in srgb, var(--danger)  12%, transparent); color: var(--danger);  }
-
-/* pending state */
-.rdp-pending-state {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  padding: 4px 0;
-}
-
-/* ══ Agent section heading ══ */
-.rdp-agents-heading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px 6px;
-  flex-shrink: 0;
-}
-.rdp-agents-heading-label {
-  color: var(--muted);
-  white-space: nowrap;
-}
-.rdp-agents-heading-line {
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-/* ══ Agent cards ══ */
-.rdp-agents-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 16px;
-  flex-shrink: 0;
-}
-
-.rdp-agent-card {
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  overflow: hidden;
-  transition: border-color 0.15s;
-}
-.rdp-agent-card:hover { border-color: color-mix(in srgb, var(--text-secondary) 40%, var(--border)); }
-
-.rdp-agent-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  cursor: pointer;
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
-  color: var(--text);
-  box-sizing: border-box;
-  transition: background 0.12s;
-}
-.rdp-agent-head:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
-
-.rdp-agent-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.rdp-agent-icon-danger  { background: color-mix(in srgb, var(--danger)  14%, transparent); color: var(--danger);  border: 1px solid color-mix(in srgb, var(--danger)  25%, transparent); }
-.rdp-agent-icon-success { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 25%, transparent); }
-.rdp-agent-icon-info    { background: color-mix(in srgb, var(--info)    14%, transparent); color: var(--info);    border: 1px solid color-mix(in srgb, var(--info)    25%, transparent); }
-
-.rdp-agent-card-meta { flex: 1; }
-.rdp-agent-desc {
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.rdp-agent-card-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.rdp-conf-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-}
-.rdp-conf-label {
-  color: var(--text-secondary);
-}
-.rdp-conf-bar {
-  width: 64px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border);
-  overflow: hidden;
-}
-.rdp-conf-fill {
-  height: 100%;
-  border-radius: 2px;
-  max-width: 100%;
-  transition: width 0.3s ease;
-}
-.rdp-conf-fill-high   { background: var(--success); }
-.rdp-conf-fill-medium { background: var(--warning); }
-.rdp-conf-fill-low    { background: var(--danger);  }
-
-.rdp-agent-toggle {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background: var(--surface-raised);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  flex-shrink: 0;
-}
-
-.rdp-agent-body {
-  border-top: 1px solid var(--border);
-  padding: 12px 14px 14px 56px;
-}
-
-.rdp-agent-response {
-  color: var(--text);
-  margin: 0 0 10px;
-}
-
-.rdp-agent-flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.rdp-flag {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-.rdp-flag-danger  { background: color-mix(in srgb, var(--danger)  14%, transparent); color: var(--danger);  border: 1px solid color-mix(in srgb, var(--danger)  25%, transparent); }
-.rdp-flag-warning { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent); }
-.rdp-flag-info    { background: color-mix(in srgb, var(--info)    14%, transparent); color: var(--info);    border: 1px solid color-mix(in srgb, var(--info)    25%, transparent); }
-
-/* ══ Recommended actions ══ */
-.rdp-actions-wrap {
-  margin: 8px 16px 0;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--success) 28%, var(--border));
-  background: color-mix(in srgb, var(--success) 5%, var(--surface));
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.rdp-actions-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--success) 20%, var(--border));
-}
-
-.rdp-actions-head-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--success) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--success) 28%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--success);
-  flex-shrink: 0;
-}
-
-.rdp-actions-title {
-  color: var(--success);
-  flex: 1;
-}
-
-.rdp-actions-count {
-  background: color-mix(in srgb, var(--success) 16%, transparent);
-  color: var(--success);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-/* Numbered steps with connecting line */
-.rdp-steps {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  position: relative;
-}
-.rdp-steps::before {
-  content: '';
-  position: absolute;
-  left: calc(14px + 13px);
-  top: 28px;
-  bottom: 28px;
-  width: 1px;
-  background: color-mix(in srgb, var(--success) 25%, var(--border));
-}
-
-.rdp-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 6px 0;
-  position: relative;
-  z-index: 1;
-}
-
-.rdp-step-num {
-  width: 28px;
-  height: 28px;
+  flex: none;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--success) 16%, var(--surface));
-  border: 1.5px solid color-mix(in srgb, var(--success) 40%, transparent);
-  color: var(--success);
+  display: grid;
+  place-items: center;
+  background: var(--accent-tint);
+  color: var(--accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.rdp-lead-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.rdp-lead-headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--type-section-title);
+  font-weight: 500;
+  line-height: var(--type-leading-title);
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+.rdp-lead-detail {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--type-body);
+  line-height: var(--type-leading-body);
+  text-wrap: pretty;
+}
+.rdp-pending { display: flex; align-items: center; gap: 6px; }
+
+.rdp-kicker {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+  font-size: var(--type-micro);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Plan timeline: filled dots joined by a line; the reply step has an open dot */
+.rdp-plan { list-style: none; margin: 0; padding: 0; }
+.rdp-plan-step { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; }
+.rdp-plan-rail { display: flex; flex-direction: column; align-items: center; }
+.rdp-plan-dot {
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.rdp-plan-dot.is-open { background: transparent; border: 1.5px solid var(--accent); }
+.rdp-plan-line { flex: 1; width: 1px; background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.rdp-plan-body { display: flex; flex-direction: column; gap: 2px; padding-bottom: 16px; min-width: 0; }
+.rdp-plan-step.is-last .rdp-plan-body { gap: 8px; padding-bottom: 0; }
+.rdp-plan-title { color: var(--text); font-size: var(--type-body); line-height: var(--type-leading-body); }
+.rdp-plan-sub { color: var(--text-faint); font-size: var(--type-caption); }
+.rdp-reply-preview {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: var(--type-description);
+  line-height: var(--type-leading-reading);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rdp-muted { color: var(--text-faint); }
+
+/* Agent checks: same timeline as the plan (see AgentChecks) */
+.rdp-check-step .rdp-plan-title { font-weight: 500; }
+.rdp-check-step .rdp-plan-body { gap: 2px; }
+.rdp-check-box { margin-top: 8px; color: var(--text); white-space: normal; }
+.rdp-check-step.is-pending .rdp-plan-dot { background: transparent; border: 1.5px solid var(--text-faint); }
+.rdp-check-step.is-flagged .rdp-plan-dot { background: var(--danger); }
+.rdp-conf-text { font-weight: 400; color: var(--text-secondary); }
+.rdp-conf-text-high { color: var(--success); }
+.rdp-conf-text-medium { color: var(--warning); }
+.rdp-conf-text-low { color: var(--danger); }
+.rdp-flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+.rdp-chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: var(--type-micro);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.rdp-conf-high,   .rdp-flag-success { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+.rdp-conf-medium, .rdp-flag-warning { background: var(--warning-tint); color: var(--warning); }
+.rdp-conf-low,    .rdp-flag-danger  { background: var(--danger-tint); color: var(--danger); }
+.rdp-flag-info { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); }
+
+.rdp-note {
+  margin: 0;
   display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-faint);
+  font-size: var(--type-caption);
+}
+
+/* ══ Actions ══ */
+.rdp-actions { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.rdp-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.rdp-step-text {
-  color: var(--text);
-  padding-top: 4px;
-}
-
-/* ══ Reply composer ══ */
-.rdp-reply-wrap {
-  margin: 8px 16px 16px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.rdp-reply-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
-}
-
-.rdp-reply-head-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent);
-  flex-shrink: 0;
-}
-
-.rdp-reply-title {
-  color: var(--accent);
-  flex: 1;
-}
-
-.rdp-reply-subtitle {
-  color: var(--muted);
-}
-
-/* To / Re fields */
-.rdp-reply-fields {
-  padding: 4px 14px;
-  border-bottom: 1px solid var(--border);
-}
-.rdp-reply-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-}
-.rdp-reply-field:last-child { border-bottom: none; }
-.rdp-field-label { color: var(--muted); width: 24px; flex-shrink: 0; }
-.rdp-field-value { color: var(--text-secondary); }
-.rdp-field-value strong { color: var(--text); }
-
-.rdp-reply-body { padding: 12px 14px; }
-
-.rdp-reply-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  padding: 10px 12px;
-  resize: vertical;
-  min-height: 130px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.rdp-reply-textarea:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.rdp-reply-textarea::placeholder { color: var(--muted); }
-
-.rdp-reply-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 1px solid var(--border);
-}
-
-.rdp-reply-hint {
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex: 1;
-}
-
-.rdp-reply-btn {
-  display: flex;
-  align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.rdp-reply-copy {
-  background: var(--surface-raised);
-  color: var(--text-secondary);
+  border-radius: 8px;
   border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--type-description);
+  font-weight: 500;
+  line-height: var(--type-leading-title);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.rdp-reply-copy:hover { color: var(--text); border-color: var(--text-secondary); }
-
-.rdp-reply-send {
+.rdp-btn:hover:not(:disabled) { border-color: var(--border-strong); }
+.rdp-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.rdp-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rdp-btn-lg { padding: 9px 16px; }
+.rdp-btn-primary {
+  border-color: var(--accent);
   background: var(--accent);
-  color: #000;
+  color: var(--on-accent);
 }
-.rdp-reply-send:hover { background: var(--accent-hover); }
+.rdp-btn-primary.rdp-btn-lg { padding-inline: 18px; box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 25%, transparent); }
+.rdp-btn-primary:hover:not(:disabled) { border-color: var(--accent-hover); background: var(--accent-hover); }
 
-/* ══════════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════════ */
+/* ══ Edit dialog ══ */
+.rdp-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+}
+.rdp-dialog {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--border-strong), 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.rdp-dialog-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--type-card-title);
+  font-weight: 500;
+  line-height: var(--type-leading-title);
+}
+.rdp-dialog-fields {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  font-size: var(--type-description);
+}
+.rdp-dialog-fields dt { color: var(--text-faint); }
+.rdp-dialog-fields dd { margin: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+.rdp-field { display: grid; gap: 5px; }
+.rdp-field > span { color: var(--text-secondary); font-size: var(--type-caption); }
+.rdp-input {
+  width: 100%;
+  min-height: 160px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  font-weight: 400;
+  line-height: var(--type-leading-reading);
+}
+.rdp-input::placeholder { color: var(--text-faint); }
+.rdp-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.rdp-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ══ Responsive ══
+   ≥1600px: more room for the PDF. ≤1100px: tighter padding. ≤900px: one column, PDF first at
+   most of the screen height, then the agent panel; the page scrolls. ≤640px: phone layout with
+   a tap-to-open card instead of the embedded PDF. */
+@media (min-width: 1600px) {
+  .rdp-body { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+}
+@media (max-width: 1100px) {
+  .rdp-doc { padding: 18px 18px; }
+  .rdp-agent { padding: 22px 20px; }
+  .rdp-indent { padding-left: 0; }
+}
 @media (max-width: 900px) {
-  .rdp-body {
-    grid-template-columns: 1fr;
-    grid-template-rows: 40vh 1fr;
-    overflow-y: auto;
-  }
-  .rdp-pdf-panel { border-right: none; border-bottom: 1px solid var(--border); }
-  .rdp-agent-panel { overflow-y: unset; }
+  .rdp-shell { overflow-y: auto; }
+  .rdp-body { grid-template-columns: 1fr; flex: none; }
+  .rdp-doc { height: min(80vh, 900px); min-height: 420px; }
+  .rdp-agent { overflow-y: visible; padding: 20px 8px; }
 }
-
 @media (max-width: 640px) {
-  .rdp-topbar { height: auto; padding: 8px 14px; gap: 8px; }
-  .rdp-topbar-div { display: none; }
-  .rdp-summary-card,
-  .rdp-actions-wrap,
-  .rdp-reply-wrap  { margin-left: 12px; margin-right: 12px; }
-  .rdp-agents-list { padding: 0 12px; }
-  .rdp-agent-body { padding-left: 44px; }
-  .rdp-conf-wrap { display: none; }
-  .rdp-reply-footer { flex-wrap: wrap; }
-  .rdp-reply-hint { width: 100%; }
-  .rdp-reply-btn { flex: 1; justify-content: center; }
+  .rdp-topbar { padding: 10px 14px; gap: 8px; }
+  .rdp-crumb-root { display: none; }
+  .rdp-topbar-right { width: 100%; justify-content: space-between; }
+  .rdp-body { padding: 0 10px 10px; gap: 10px; }
+  .rdp-doc { height: auto; min-height: 0; padding: 16px; }
+  .rdp-doc-body { min-height: 180px; }
+  .rdp-doc-frame { display: none; }
+  .rdp-doc-mobile { display: flex; }
+  .rdp-doc-links { margin-left: 0; width: 100%; }
+  .rdp-doc-links .rdp-doc-download { flex: 1; justify-content: center; padding: 8px 10px; }
+  .rdp-doc-kicker { flex-wrap: wrap; }
+  .rdp-actions .rdp-btn { flex: 1; }
 }

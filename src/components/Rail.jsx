@@ -8,8 +8,8 @@ import React from "react";
  * - items (or milestones): Array of step items [{ id, name/title, status, forecastDate/date, subtitle }]
  * - selectedId (or selectedMilestoneId): ID of the currently selected step
  * - onSelect (or onSelectMilestone): Callback when a step is clicked `(id) => void`
- * - title: Header title (defaults to "Milestone progression")
- * - subtitle: Optional secondary header description
+ * - subtitle: Optional line shown above the steps
+ * - ariaLabel: Accessible name for the rail (defaults to "Milestone progression")
  * - className: Optional additional CSS class for the section panel
  */
 export function Rail({
@@ -20,17 +20,18 @@ export function Rail({
   selectedMilestoneId,
   onSelect,
   onSelectMilestone,
-  title = "Milestone progression",
   subtitle,
+  ariaLabel = "Milestone progression",
   className = "",
 }) {
   const list = items || milestones || project?.milestones || [];
-  const activeSelectedId = selectedId !== undefined ? selectedId : selectedMilestoneId;
+  const activeSelectedId =
+    selectedId !== undefined ? selectedId : selectedMilestoneId;
   const handleSelect = onSelect || onSelectMilestone;
 
   const getStatusClass = (status) => {
     const s = String(status || "").toLowerCase();
-    if (s === "completed" || s === "complete" || s === "done") return "complete";
+    if (s === "completed") return "completed";
     if (s === "blocked") return "blocked";
     if (s === "in progress" || s === "active") return "current";
     return "remaining";
@@ -46,14 +47,13 @@ export function Rail({
   return (
     <section
       className={`panel phase-panel milestone-progression-panel ${className}`}
-      aria-label={title}
+      aria-label={ariaLabel}
     >
-      <div className="section-head">
-        <div>
-          <h2>{title}</h2>
-          {subtitle && <p>{subtitle}</p>}
+      {subtitle && (
+        <div className="section-head">
+          <p>{subtitle}</p>
         </div>
-      </div>
+      )}
       <ol
         className="phase-rail"
         style={{
@@ -62,13 +62,14 @@ export function Rail({
       >
         {list.map((item, idx) => {
           const s = (item.status || "").toLowerCase();
-          const isComplete = s === "completed" || s === "complete" || s === "done";
+          const isComplete = s === "completed";
           const isBlocked = s === "blocked";
           const isInProgress = s === "in progress" || s === "active";
           const isSelected = activeSelectedId === item.id;
           const stateClass = getStatusClass(item.status);
 
-          const itemName = item.name || item.title || item.id || `Step ${idx + 1}`;
+          const itemName =
+            item.name || item.title || item.id || `Step ${idx + 1}`;
           const formattedTitle =
             item.id && !itemName.startsWith(item.id)
               ? `${item.id} ${itemName}`
@@ -112,5 +113,4 @@ export function Rail({
   );
 }
 
-export const MilestoneRail = Rail;
 export default Rail;

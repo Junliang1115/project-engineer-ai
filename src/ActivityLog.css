@@ -19,7 +19,7 @@
   --list-row-gap: 1.25rem;
   --list-row-padding: 1rem 1.1rem;
   --list-row-body-gap: 0.3rem;
-  --list-row-hover: #252a2d;
+  --list-row-hover: var(--surface-raised);
 }
 .activity-type {
   justify-self: start;
@@ -27,7 +27,7 @@
   padding: 0.25rem 0.5rem;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--accent-tint);
   color: var(--accent);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -36,8 +36,11 @@
 .activity-log-row time { color: var(--muted); }
 
 .activity-status { justify-self: end; min-width: 6.5rem; padding: 0.28rem 0.55rem; border-radius: 999px; text-align: center; }
-.activity-status.is-needs-review { color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.activity-status.is-needs-review { color: var(--warning); background: var(--warning-tint); }
 .activity-status.is-done { color: var(--success); background: color-mix(in srgb, var(--success) 12%, transparent); }
+.activity-status.is-rejected { color: var(--danger); background: var(--danger-tint); }
+.activity-log-row.is-clickable { cursor: pointer; text-align: left; width: 100%; border: 0; background: transparent; font: inherit; color: inherit; }
+.activity-log-row.is-clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .activity-empty { margin: 0; padding: 1.5rem; color: var(--muted); }
 
 @media (max-width: 700px) {

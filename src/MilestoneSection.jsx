@@ -8,13 +8,13 @@ const money = (value, compact = false) =>
   compact
     ? `$${value.toFixed(value % 1 ? 1 : 0)}M`
     : new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value);
-import Rail, { MilestoneRail } from "./components/Rail.jsx";
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }).format(value);
+import Rail from "./components/Rail.jsx";
 import { DetailPanel } from "./components/DetailPanel.jsx";
-export { MilestoneRail, Rail, DetailPanel };
+export { Rail, DetailPanel };
 
 // Helper to determine the current active milestone gate
 export function getActiveMilestone(milestones) {
@@ -30,7 +30,7 @@ export function getActiveMilestone(milestones) {
   // 2. Look for first non-completed milestone (e.g. Blocked or upcoming)
   const pending = milestones.find((m) => {
     const s = (m.status || "").toLowerCase();
-    return s !== "complete" && s !== "completed";
+    return s !== "completed";
   });
   if (pending) return pending;
 
@@ -50,8 +50,13 @@ export function getProjectMilestones(project) {
     let tasks = Array.isArray(m.tasks) && m.tasks.length > 0 ? m.tasks : [];
     if (tasks.length === 0 && allProjectTasks.length > 0) {
       tasks = allProjectTasks.filter((t) => {
-        if (t.milestone_id && (t.milestone_id === m.id || t.milestone_id === m.milestone_id)) return true;
-        if (t.due_date && m.forecastDate && t.due_date === m.forecastDate) return true;
+        if (
+          t.milestone_id &&
+          (t.milestone_id === m.id || t.milestone_id === m.milestone_id)
+        )
+          return true;
+        if (t.due_date && m.forecastDate && t.due_date === m.forecastDate)
+          return true;
         return false;
       });
       if (tasks.length === 0 && m.id === "M-04") {
@@ -81,7 +86,9 @@ export function getTaskLog(task) {
   if (!task) return [];
 
   // Collect real activities attached to this task via the foreign key (task_id):
-  const taskActivities = Array.isArray(task.activities) ? [...task.activities] : [];
+  const taskActivities = Array.isArray(task.activities)
+    ? [...task.activities]
+    : [];
 
   // Sort latest first (most recent timestamp at top):
   taskActivities.sort((a, b) => {
@@ -90,7 +97,8 @@ export function getTaskLog(task) {
   });
 
   return taskActivities.map((act) => {
-    const rawSource = act.sourceType || act.source || act.source_type || "email";
+    const rawSource =
+      act.sourceType || act.source || act.source_type || "email";
     const formattedSource = rawSource
       ? rawSource.charAt(0).toUpperCase() + rawSource.slice(1)
       : "";
@@ -101,7 +109,12 @@ export function getTaskLog(task) {
       sourceType: formattedSource,
       sourceOwner: act.from || act.sourceOwner || "",
       sourceDate: act.received || act.sourceDate || "",
-      confidence: act.state === "applied" ? "Applied" : act.state === "needs_review" ? "Needs Review" : "Logged",
+      confidence:
+        act.state === "applied"
+          ? "Applied"
+          : act.state === "needs_review"
+            ? "Needs Review"
+            : "Logged",
       summary: act.summary,
     };
   });
@@ -109,7 +122,11 @@ export function getTaskLog(task) {
 
 // Task Activity Log Panel — using unified DetailPanel template
 export function TaskLog({ logs, evidence, task, project }) {
-  const activities = Array.isArray(logs) ? logs : Array.isArray(evidence) ? evidence : [];
+  const activities = Array.isArray(logs)
+    ? logs
+    : Array.isArray(evidence)
+      ? evidence
+      : [];
 
   return (
     <tr className="task-source-row">
@@ -158,13 +175,24 @@ export function MilestoneGroupCard({
                 <th className="num">Estimate</th>
                 <th className="num">Actual</th>
                 <th className="num">Variance</th>
-                <th style={{ width: "44px", textAlign: "right" }} aria-label="Details" title="Source evidence"></th>
+                <th
+                  style={{ width: "44px", textAlign: "right" }}
+                  aria-label="Details"
+                  title="Source evidence"
+                ></th>
               </tr>
             </thead>
             <tbody>
               {milestone.tasks.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: "center", padding: "24px", color: "var(--muted)" }}>
+                  <td
+                    colSpan="8"
+                    style={{
+                      textAlign: "center",
+                      padding: "24px",
+                      color: "var(--muted)",
+                    }}
+                  >
                     No work package tasks logged for this milestone yet.
                   </td>
                 </tr>
@@ -184,7 +212,9 @@ export function MilestoneGroupCard({
                         <td>
                           <strong>{task.title}</strong>
                           <div className="task-subrow">
-                            <small className="task-id-badge technical-id">{task.id}</small>
+                            <small className="task-id-badge technical-id">
+                              {task.id}
+                            </small>
                           </div>
                         </td>
                         <td>
@@ -194,10 +224,18 @@ export function MilestoneGroupCard({
                         <td className="due-col">{task.due_date || "—"}</td>
                         <td className="num">{money(task.cost_estimate)}</td>
                         <td className="num">{money(task.cost_actual)}</td>
-                        <td className={`num ${variance < 0 ? "overrun" : "underrun"}`}>
+                        <td
+                          className={`num ${variance < 0 ? "overrun" : "underrun"}`}
+                        >
                           {money(variance)}
                         </td>
-                        <td className="task-action-cell" style={{ textAlign: "right", verticalAlign: "middle" }}>
+                        <td
+                          className="task-action-cell"
+                          style={{
+                            textAlign: "right",
+                            verticalAlign: "middle",
+                          }}
+                        >
                           {/* Expand source / task log details toggle */}
                           <DetailPanel.Toggle
                             isOpen={isTaskExpanded}
@@ -208,7 +246,13 @@ export function MilestoneGroupCard({
                           />
                         </td>
                       </tr>
-                      {isTaskExpanded && <TaskLog logs={taskLogs} evidence={taskLogs} task={task} />}
+                      {isTaskExpanded && (
+                        <TaskLog
+                          logs={taskLogs}
+                          evidence={taskLogs}
+                          task={task}
+                        />
+                      )}
                     </React.Fragment>
                   );
                 })
@@ -246,16 +290,23 @@ export default function MilestoneSection({ project, initialView = "active" }) {
   const phaseMilestones = useMemo(() => {
     if (selectedPhase === "ALL") return milestones;
     return milestones.filter(
-      (m) => (m.phase || "").toLowerCase() === selectedPhase.toLowerCase()
+      (m) => (m.phase || "").toLowerCase() === selectedPhase.toLowerCase(),
     );
   }, [milestones, selectedPhase]);
 
-  const activeMilestone = useMemo(() => getActiveMilestone(phaseMilestones), [phaseMilestones]);
+  const activeMilestone = useMemo(
+    () => getActiveMilestone(phaseMilestones),
+    [phaseMilestones],
+  );
 
   const [selectedMilestoneId, setSelectedMilestoneId] = useState(null);
 
   const defaultMilestoneId =
-    initialView === "all" ? "ALL" : activeMilestone ? activeMilestone.id : "ALL";
+    initialView === "all"
+      ? "ALL"
+      : activeMilestone
+        ? activeMilestone.id
+        : "ALL";
 
   // Sync selected milestone when phase changes or initially loads
   useEffect(() => {
@@ -296,33 +347,44 @@ export default function MilestoneSection({ project, initialView = "active" }) {
 
   // Filter tasks based on the milestone progression selection
   const selectedMilestones = phaseMilestones.filter(
-    (m) => isShowingAll || m.id === selectedMilestoneId
+    (m) => isShowingAll || m.id === selectedMilestoneId,
   );
 
   // Narrow each milestone's tasks by search, status and owner; hide milestones with no matches
   const query = searchTerm.trim().toLowerCase();
   const filteredMilestones = isTaskFiltered
     ? selectedMilestones
-      .map((m) => ({
-        ...m,
-        tasks: m.tasks.filter(
-          (t) =>
-            (filterStatus === "All" || t.status === filterStatus) &&
-            (filterOwner === "All" || t.owner === filterOwner) &&
-            (!query ||
-              [t.id, t.title, t.owner, t.status]
-                .some((value) => String(value || "").toLowerCase().includes(query)))
-        ),
-      }))
-      .filter((m) => m.tasks.length > 0)
+        .map((m) => ({
+          ...m,
+          tasks: m.tasks.filter(
+            (t) =>
+              (filterStatus === "All" || t.status === filterStatus) &&
+              (filterOwner === "All" || t.owner === filterOwner) &&
+              (!query ||
+                [t.id, t.title, t.owner, t.status].some((value) =>
+                  String(value || "")
+                    .toLowerCase()
+                    .includes(query),
+                )),
+          ),
+        }))
+        .filter((m) => m.tasks.length > 0)
     : selectedMilestones;
-  const shownTaskCount = filteredMilestones.reduce((sum, m) => sum + m.tasks.length, 0);
+  const shownTaskCount = filteredMilestones.reduce(
+    (sum, m) => sum + m.tasks.length,
+    0,
+  );
 
   return (
     <div>
       {/* 1. Page Header with Phase Dropdown */}
       <div className="section-page-header">
-        <h1>Milestones</h1>
+        <div>
+          <h1>Milestones</h1>
+          <p className="section-page-description">
+            Track milestone progress, work packages, and task delivery.
+          </p>
+        </div>
         {availablePhases.length > 1 && (
           <div className="section-header-actions">
             <select
@@ -346,9 +408,7 @@ export default function MilestoneSection({ project, initialView = "active" }) {
       </div>
 
       {/* 2. Milestone Progression Stepper (Controls milestone task filtering) */}
-      <MilestoneRail
-        project={project}
-        currentPhase={selectedPhase === "ALL" ? project?.phase : selectedPhase}
+      <Rail
         milestones={phaseMilestones}
         selectedMilestoneId={selectedMilestoneId}
         onSelectMilestone={setSelectedMilestoneId}
@@ -360,7 +420,10 @@ export default function MilestoneSection({ project, initialView = "active" }) {
         placeholder="Search task title, ID or owner"
         ariaLabel="Search milestone tasks"
         onReset={resetFilters}
-        canReset={isTaskFiltered || (selectedMilestoneId || "ALL") !== defaultMilestoneId}
+        canReset={
+          isTaskFiltered ||
+          (selectedMilestoneId || "ALL") !== defaultMilestoneId
+        }
         count={shownTaskCount}
         countLabel="tasks shown"
       >
@@ -371,7 +434,10 @@ export default function MilestoneSection({ project, initialView = "active" }) {
           onChange={setSelectedMilestoneId}
           options={[
             { value: "ALL", label: "All milestones" },
-            ...phaseMilestones.map((m) => ({ value: m.id, label: m.name || m.id })),
+            ...phaseMilestones.map((m) => ({
+              value: m.id,
+              label: m.name || m.id,
+            })),
           ]}
         />
         {statusOptions.length > 1 && (
@@ -379,7 +445,10 @@ export default function MilestoneSection({ project, initialView = "active" }) {
             label="Filter tasks by status"
             value={filterStatus}
             onChange={setFilterStatus}
-            options={[{ value: "All", label: "All statuses" }, ...statusOptions]}
+            options={[
+              { value: "All", label: "All statuses" },
+              ...statusOptions,
+            ]}
           />
         )}
         {ownerOptions.length > 1 && (
@@ -398,7 +467,9 @@ export default function MilestoneSection({ project, initialView = "active" }) {
           <div className="empty-milestones-state">
             <AlertCircle size={28} />
             <h3>No matching tasks</h3>
-            <p>No tasks match the current filters in the selected milestones.</p>
+            <p>
+              No tasks match the current filters in the selected milestones.
+            </p>
             <Button kind="tertiary" size="sm" onClick={resetFilters}>
               Clear filters
             </Button>

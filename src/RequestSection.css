@@ -4,9 +4,6 @@
 .request-list { border-top: 1px solid var(--line); }
 .request-type-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 6px; }
 .request-type-icon.is-query { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); }
-.request-type-icon.is-change { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
-.request-category { padding: 2px 7px; border: 1px solid currentColor; border-radius: 999px; }
-.request-category.is-query { color: var(--info); }
-.request-category.is-change { color: var(--accent); }
+.request-type-icon.is-change { background: var(--accent-tint); color: var(--accent); }
 .request-status { padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); white-space: nowrap; }
 .request-empty { padding: 48px 16px; color: var(--muted); text-align: center; }

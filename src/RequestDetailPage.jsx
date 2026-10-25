@@ -1,45 +1,41 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  ArrowLeft,
-  Bot,
-  AlertTriangle,
-  Shield,
-  Wrench,
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  Download,
+  ChevronRight,
+  ClipboardList,
   Copy,
-  Send,
-  CheckCircle,
-  Clock,
-  Zap,
+  Download,
+  FileText,
   Info,
+  Maximize2,
+  Pencil,
+  Send,
+  Sparkles,
+  Zap,
 } from "lucide-react";
+import { documentFileUrl } from "./api.js";
+import BackButton from "./components/BackButton.jsx";
 import "./RequestDetail.css";
+
+// Request detail, "reasoning-first" layout (design option 1c): the original document on the
+// left; on the right the agent explains its read of the request, lays out its plan ending in
+// the reply, and the reply is edited in a dialog.
 
 // ── Agent config ──────────────────────────────────────────────────────────────
 const AGENTS = [
   {
     key: "risk",
     label: "Risk Agent",
-    icon: AlertTriangle,
-    colorKey: "danger",
-    description: "Evaluates schedule, cost, and safety risk exposure.",
+    description: "Schedule, cost, and safety risk exposure.",
   },
   {
     key: "compliance",
     label: "Compliance Agent",
-    icon: Shield,
-    colorKey: "success",
-    description: "Checks regulatory, HSE, and contractual compliance.",
+    description: "Regulatory, HSE, and contractual compliance.",
   },
   {
     key: "technical",
     label: "Technical Agent",
-    icon: Wrench,
-    colorKey: "info",
-    description: "Provides engineering and technical disposition.",
+    description: "Engineering and technical disposition.",
   },
 ];
 
@@ -51,310 +47,313 @@ function confidenceLevel(conf) {
   return "low";
 }
 
-/** Derive summary-level tags from agent responses */
-function deriveSummaryTags(agentResponses) {
-  const tags = [];
-  const r = agentResponses || {};
-
-  if (r.risk?.confidence != null) {
-    const lvl = confidenceLevel(r.risk.confidence);
-    tags.push({ label: `Risk: ${lvl}`, type: lvl === "high" ? "success" : lvl === "medium" ? "warning" : "danger" });
-  }
-  if (r.compliance?.confidence != null) {
-    const lvl = confidenceLevel(r.compliance.confidence);
-    tags.push({ label: "Compliance check", type: lvl === "high" ? "success" : "warning" });
-  }
-  if (r.technical?.confidence != null) {
-    tags.push({ label: "Technical review", type: "info" });
-  }
-  // collect any flags
-  const allFlags = [
-    ...(r.risk?.flags || []),
-    ...(r.compliance?.flags || []),
-    ...(r.technical?.flags || []),
-  ];
-  if (allFlags.length > 0) {
-    tags.push({ label: `${allFlags.length} flag${allFlags.length > 1 ? "s" : ""} raised`, type: "warning" });
-  }
-  return tags;
+/** First sentence of the summary is the headline; the rest is the supporting detail. */
+function splitSummary(summary) {
+  const [headline, ...rest] = String(summary || "")
+    .trim()
+    .split(/(?<=[.!?])\s+/);
+  return { headline, detail: rest.join(" ") };
 }
 
-// ── PDF Viewer ────────────────────────────────────────────────────────────────
-function PdfViewer({ request }) {
-  const hasAttachment = Boolean(request.attachmentUrl);
+/** One line under the plan: flags raised across agents, or none. */
+function flagSummary(agentResponses) {
+  if (!AGENTS.some((a) => agentResponses?.[a.key]?.content))
+    return "Agent analysing...";
+  const flags = AGENTS.flatMap((a) => agentResponses?.[a.key]?.flags || []);
+  if (flags.length === 0) return "No risk flags raised by the agents";
+  return `${flags.length} flag${flags.length > 1 ? "s" : ""} raised: ${flags
+    .map((f) => f.label)
+    .join(" · ")}`;
+}
+
+// ── Left: original document ───────────────────────────────────────────────────
+// The PDF comes from the document table: the stored attachment of the email that raised the
+// request (request.documentId), served by GET /documents/{id}/file.
+function DocumentPanel({ request, isTQ }) {
+  const fileUrl = request.documentId
+    ? documentFileUrl(request.documentId)
+    : request.attachmentUrl;
+  const hasAttachment = Boolean(fileUrl);
   const filename = request.attachmentName || `${request.id}_document.pdf`;
+  const pages = request.attachmentPages
+    ? `${request.attachmentPages} page${request.attachmentPages === 1 ? "" : "s"}`
+    : "";
+  const meta = [
+    request.submittedBy,
+    pages,
+    request.attachmentSize,
+    request.submittedDate,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div className="rdp-pdf-panel">
-      <div className="rdp-pdf-header">
-        <div className="rdp-pdf-file-icon">
-          <FileText size={14} aria-hidden="true" />
-        </div>
-        <div className="rdp-pdf-info">
-          <div className="rdp-pdf-filename">{filename}</div>
-          <div className="rdp-pdf-filemeta">
-            {request.attachmentSize
-              ? `${request.attachmentSize} · `
-              : ""}
-            {request.submittedDate || ""}
-          </div>
-        </div>
+    <section className="rdp-doc" aria-label="Request document">
+      <div className="rdp-doc-kicker">
+        <FileText size={13} aria-hidden="true" />
+        Original document
         {hasAttachment && (
-          <a
-            href={request.attachmentUrl}
-            download
-            className="rdp-pdf-download"
-            aria-label="Download attachment"
-          >
-            <Download size={13} aria-hidden="true" />
-            Download
-          </a>
+          <span className="rdp-doc-links">
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rdp-doc-download"
+              aria-label="Open the PDF in a new tab"
+            >
+              <Maximize2 size={13} aria-hidden="true" />
+              Open
+            </a>
+            <a
+              href={fileUrl}
+              download={filename}
+              className="rdp-doc-download"
+              aria-label="Download attachment"
+            >
+              <Download size={13} aria-hidden="true" />
+              Download
+            </a>
+          </span>
         )}
       </div>
-      <div className="rdp-pdf-body">
+      <h2 className="rdp-doc-title">{filename}</h2>
+      {meta && <p className="rdp-doc-meta">{meta}</p>}
+
+      <div className="rdp-doc-body">
         {hasAttachment ? (
-          <iframe
-            src={request.attachmentUrl}
-            className="rdp-pdf-frame"
-            title={`Attachment for ${request.id}`}
-          />
+          <>
+            {/* Open each page at the panel's width (Chrome/Edge: view=FitH, Firefox: zoom=page-width). */}
+            <iframe
+              src={`${fileUrl}#view=FitH&zoom=page-width&navpanes=0`}
+              className="rdp-doc-frame"
+              title={`Attachment for ${request.id}`}
+            />
+            {/* Phones can't show a PDF inside a page; offer the browser's own viewer instead. */}
+            <a className="rdp-doc-mobile" href={fileUrl} target="_blank" rel="noreferrer">
+              <FileText size={28} aria-hidden="true" />
+              <strong>{filename}</strong>
+              <span>{pages ? `${pages} · ` : ""}Tap to open the PDF</span>
+            </a>
+          </>
         ) : (
-          <div className="rdp-pdf-empty">
-            <div className="rdp-pdf-empty-icon">
-              <FileText size={26} aria-hidden="true" />
+          <div className="rdp-doc-empty">
+            <div className="rdp-doc-empty-icon">
+              <FileText size={24} aria-hidden="true" />
             </div>
             <p>No document attached</p>
             <span>
-              The original{" "}
-              {request.category === "Technical Query" ? "TQ" : "change order"}{" "}
-              document will appear here when uploaded.
+              The original {isTQ ? "TQ" : "change order"} document will appear
+              here when the email that raised it has a PDF attachment.
             </span>
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
-// ── Overall Summary ───────────────────────────────────────────────────────────
-function OverallSummary({ request }) {
-  const summary = request.agentSummary;
-  const tags = deriveSummaryTags(request.agentResponses);
+// ── Right: agent reasoning ────────────────────────────────────────────────────
+function AgentLead({ request }) {
+  const { headline, detail } = splitSummary(request.agentSummary);
 
   return (
-    <div className="rdp-summary-card">
-      <div className="rdp-summary-inner">
-        <div className="rdp-summary-head">
-          <div className="rdp-summary-avatar">
-            <Bot size={16} aria-hidden="true" />
-          </div>
-          <div className="rdp-summary-meta">
-            <h3>OilAgent Summary</h3>
-            <p>Multi-agent analysis · {AGENTS.length} agents</p>
-          </div>
-          {request.agentProcessedAt && (
-            <div className="rdp-processed-time">
-              <Clock size={11} aria-hidden="true" />
-              {request.agentProcessedAt}
-            </div>
-          )}
-        </div>
-
-        {summary ? (
-          <p className="rdp-summary-body">{summary}</p>
+    <div className="rdp-lead">
+      <div className="rdp-lead-avatar" aria-hidden="true">
+        <Sparkles size={16} />
+      </div>
+      <div className="rdp-lead-text">
+        {headline ? (
+          <>
+            <h2 className="rdp-lead-headline">{headline}</h2>
+            {detail && <p className="rdp-lead-detail">{detail}</p>}
+          </>
         ) : (
-          <div className="rdp-pending-state">
-            <Zap size={13} aria-hidden="true" />
-            <span>Agents are processing this request…</span>
-          </div>
-        )}
-
-        {tags.length > 0 && (
-          <div className="rdp-summary-tags">
-            {tags.map((tag, i) => (
-              <span key={i} className={`rdp-summary-tag rdp-stag-${tag.type}`}>
-                {tag.label}
-              </span>
-            ))}
-          </div>
+          <>
+            <h2 className="rdp-lead-headline">
+              Agents are processing this request.
+            </h2>
+            <p className="rdp-lead-detail rdp-pending">
+              <Zap size={13} aria-hidden="true" /> The summary and plan will
+              appear here when the analysis finishes.
+            </p>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-// ── Individual Agent Response ─────────────────────────────────────────────────
-function AgentResponseCard({ agent, response }) {
-  const [open, setOpen] = useState(true);
-  const Icon = agent.icon;
-  const hasResponse = Boolean(response?.content);
-  const conf = response?.confidence;
-  const confLevel = confidenceLevel(conf);
+/** The plan as a timeline: recommended actions, ending with the reply to the requester. */
+function Plan({ actions, request, draft, isTQ }) {
+  const replyTo = request.submittedBy || "the requester";
 
   return (
-    <div className="rdp-agent-card">
-      <button
-        type="button"
-        className="rdp-agent-head"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
-        <div className={`rdp-agent-icon-wrap rdp-agent-icon-${agent.colorKey}`}>
-          <Icon size={13} aria-hidden="true" />
-        </div>
-
-        <div className="rdp-agent-card-meta">
-          <div className="rdp-agent-label">{agent.label}</div>
-          <div className="rdp-agent-desc">{agent.description}</div>
-        </div>
-
-        <div className="rdp-agent-card-right">
-          {conf != null && (
-            <div className="rdp-conf-wrap">
-              <span className="rdp-conf-label">{conf}% confidence</span>
-              <div className="rdp-conf-bar">
-                <div
-                  className={`rdp-conf-fill rdp-conf-fill-${confLevel}`}
-                  style={{ width: `${conf}%` }}
-                />
-              </div>
-            </div>
-          )}
-          <div className="rdp-agent-toggle">
-            {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </div>
-        </div>
-      </button>
-
-      {open && (
-        <div className="rdp-agent-body">
-          {hasResponse ? (
-            <>
-              <p className="rdp-agent-response">{response.content}</p>
-              {response.flags?.length > 0 && (
-                <div className="rdp-agent-flags">
-                  {response.flags.map((flag, i) => (
-                    <span
-                      key={i}
-                      className={`rdp-flag rdp-flag-${flag.severity || "info"}`}
-                    >
-                      {flag.label}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="rdp-pending-state">
-              <Zap size={13} aria-hidden="true" />
-              <span>Analysis pending…</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Recommended Actions ───────────────────────────────────────────────────────
-function RecommendedActions({ actions }) {
-  if (!actions || actions.length === 0) return null;
-
-  return (
-    <div className="rdp-actions-wrap">
-      <div className="rdp-actions-head">
-        <div className="rdp-actions-head-icon">
-          <CheckCircle size={14} aria-hidden="true" />
-        </div>
-        <span className="rdp-actions-title">Recommended Actions</span>
-        <span className="rdp-actions-count">{actions.length}</span>
-      </div>
-      <div className="rdp-steps">
+    <div className="rdp-indent">
+      <span className="rdp-kicker">Recommended plan</span>
+      <ol className="rdp-plan">
         {actions.map((action, i) => (
-          <div key={i} className="rdp-step">
-            <div className="rdp-step-num">{i + 1}</div>
-            <div className="rdp-step-text">{action}</div>
-          </div>
+          <li key={i} className="rdp-plan-step">
+            <span className="rdp-plan-rail" aria-hidden="true">
+              <span className="rdp-plan-dot" />
+              <span className="rdp-plan-line" />
+            </span>
+            <div className="rdp-plan-body">
+              <span className="rdp-plan-title">{action}</span>
+              <span className="rdp-plan-sub">Step {i + 1}</span>
+            </div>
+          </li>
         ))}
-      </div>
+        <li className="rdp-plan-step is-last">
+          <span className="rdp-plan-rail" aria-hidden="true">
+            <span className="rdp-plan-dot is-open" />
+          </span>
+          <div className="rdp-plan-body">
+            <span className="rdp-plan-title">
+              Reply to {replyTo} ·{" "}
+              {isTQ ? "technical reply" : "change order response"}
+            </span>
+            <div className="rdp-reply-preview">
+              {draft || (
+                <span className="rdp-muted">
+                  The agent's draft reply will appear here for your review.
+                </span>
+              )}
+            </div>
+          </div>
+        </li>
+      </ol>
     </div>
   );
 }
 
-// ── Reply Draft ───────────────────────────────────────────────────────────────
-function ReplyDraft({ request }) {
-  const isTQ = request.category === "Technical Query";
-  const [draft, setDraft] = useState(request.replyDraft || "");
-  const [copied, setCopied] = useState(false);
+/**
+ * Each agent's response as a step on the same timeline as the plan: dot, title with confidence,
+ * muted remit line, and the response (with any flags) in the raised box. Pending agents get an
+ * open dot; an agent that raised a danger flag gets a red dot.
+ */
+function AgentChecks({ agentResponses }) {
+  return (
+    <div className="rdp-indent">
+      <span className="rdp-kicker">Agent Response</span>
+      <ol className="rdp-plan">
+        {AGENTS.map((agent, i) => {
+          const response = agentResponses?.[agent.key];
+          const conf = response?.confidence;
+          const flags = response?.flags || [];
+          const state = !response?.content
+            ? "is-pending"
+            : flags.some((flag) => flag.severity === "danger")
+              ? "is-flagged"
+              : "";
+          return (
+            <li
+              key={agent.key}
+              className={`rdp-plan-step rdp-check-step ${state} ${i === AGENTS.length - 1 ? "is-last" : ""}`}
+            >
+              <span className="rdp-plan-rail" aria-hidden="true">
+                <span className="rdp-plan-dot" />
+                {i < AGENTS.length - 1 && <span className="rdp-plan-line" />}
+              </span>
+              <div className="rdp-plan-body">
+                <span className="rdp-plan-title">
+                  {agent.label}
+                  {conf != null && (
+                    <span
+                      className={`rdp-conf-text rdp-conf-text-${confidenceLevel(conf)}`}
+                    >
+                      {" "}
+                      · {conf}% confidence
+                    </span>
+                  )}
+                </span>
+                <span className="rdp-plan-sub">
+                  {response?.content
+                    ? agent.description
+                    : `${agent.description} Analysis pending…`}
+                </span>
+                {response?.content && (
+                  <div className="rdp-reply-preview rdp-check-box">
+                    {response.content}
+                    {flags.length > 0 && (
+                      <div className="rdp-flags">
+                        {flags.map((flag, j) => (
+                          <span
+                            key={j}
+                            className={`rdp-chip rdp-flag-${flag.severity || "info"}`}
+                          >
+                            {flag.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(draft).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+// ── Edit dialog ───────────────────────────────────────────────────────────────
+function ReplyDialog({ request, draft, onSave, onCancel }) {
+  const [value, setValue] = useState(draft);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
 
   return (
-    <div className="rdp-reply-wrap">
-      <div className="rdp-reply-head">
-        <div className="rdp-reply-head-icon">
-          <Send size={14} aria-hidden="true" />
-        </div>
-        <span className="rdp-reply-title">
-          {isTQ ? "Technical Reply" : "Change Order Response"}
-        </span>
-        <span className="rdp-reply-subtitle">Draft · review before sending</span>
-      </div>
-
-      {/* To / Re fields */}
-      <div className="rdp-reply-fields">
-        {request.submittedBy && (
-          <div className="rdp-reply-field">
-            <span className="rdp-field-label">To</span>
-            <span className="rdp-field-value">
-              <strong>{request.submittedBy}</strong>
-            </span>
-          </div>
-        )}
-        <div className="rdp-reply-field">
-          <span className="rdp-field-label">Re</span>
-          <span className="rdp-field-value">
-            <strong className="technical-id">{request.id}</strong>
+    <div className="rdp-dialog-backdrop" onClick={onCancel}>
+      <div
+        className="rdp-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rdp-dialog-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="rdp-dialog-title" className="rdp-dialog-title">
+          Edit the agent's reply
+        </h2>
+        <dl className="rdp-dialog-fields">
+          {request.submittedBy && (
+            <>
+              <dt>To</dt>
+              <dd>{request.submittedBy}</dd>
+            </>
+          )}
+          <dt>Re</dt>
+          <dd>
+            <span className="technical-id">{request.id}</span>
             {request.title ? ` – ${request.title}` : ""}
-          </span>
+          </dd>
+        </dl>
+        <label className="rdp-field">
+          <span>Reply</span>
+          <textarea
+            className="rdp-input"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Write the reply to send…"
+            autoFocus
+          />
+        </label>
+        <div className="rdp-dialog-actions">
+          <button type="button" className="rdp-btn" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rdp-btn rdp-btn-primary"
+            onClick={() => onSave(value)}
+          >
+            Save reply
+          </button>
         </div>
-      </div>
-
-      <div className="rdp-reply-body">
-        <textarea
-          className="rdp-reply-textarea"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={
-            isTQ
-              ? "Agent-generated technical reply will appear here for your review and editing…"
-              : "Agent-generated change order response will appear here for your review and editing…"
-          }
-          aria-label="Reply draft"
-        />
-      </div>
-
-      <div className="rdp-reply-footer">
-        <span className="rdp-reply-hint">
-          <Info size={11} aria-hidden="true" />
-          Drafted by OilAgent · review before sending
-        </span>
-        <button
-          type="button"
-          className="rdp-reply-btn rdp-reply-copy"
-          onClick={handleCopy}
-        >
-          <Copy size={13} aria-hidden="true" />
-          {copied ? "Copied!" : "Copy"}
-        </button>
-        <button type="button" className="rdp-reply-btn rdp-reply-send">
-          <Send size={13} aria-hidden="true" />
-          Send via Gmail
-        </button>
       </div>
     </div>
   );
@@ -367,82 +366,107 @@ export default function RequestDetailPage({ request, onBack }) {
   const statusClass = `rdp-status-${String(request.status)
     .toLowerCase()
     .replaceAll(" ", "-")}`;
-
   const recommendedActions =
     request.recommendedActions ||
     (request.disposition ? [request.disposition] : []);
+
+  const [draft, setDraft] = useState(request.replyDraft || "");
+  const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(draft).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="rdp-shell">
       {/* ── Top bar ── */}
       <header className="rdp-topbar">
-        <button
-          type="button"
-          className="rdp-back-btn"
-          onClick={onBack}
-          aria-label="Back to requests"
-        >
-          <ArrowLeft size={14} aria-hidden="true" />
-          <span>Requests</span>
-        </button>
-
-        <div className="rdp-topbar-div" aria-hidden="true" />
-
-        <div className="rdp-topbar-meta">
-          <span className={`rdp-type-badge rdp-type-${isTQ ? "query" : "change"}`}>
+        <BackButton onClick={onBack} label="Back to requests" />
+        <nav className="rdp-crumbs" aria-label="Breadcrumb">
+          <ClipboardList size={15} aria-hidden="true" className="rdp-crumb-root" />
+          <span className="rdp-crumb-root">Requests</span>
+          <ChevronRight size={12} aria-hidden="true" className="rdp-crumb-root" />
+          <span
+            className={`rdp-type-badge rdp-type-${isTQ ? "query" : "change"}`}
+          >
             {isTQ ? "TQ" : "CO"}
           </span>
           <span className="rdp-topbar-id technical-id">{request.id}</span>
-          <span className="rdp-topbar-sep" aria-hidden="true">›</span>
           <h1 className="rdp-topbar-title">{request.title}</h1>
-        </div>
-
+        </nav>
         <div className="rdp-topbar-right">
-          {request.submittedDate && (
-            <span className="rdp-meta-chip">
-              <Clock size={10} aria-hidden="true" />
-              {request.submittedDate}
-            </span>
-          )}
+          {request.submittedDate && <span>{request.submittedDate}</span>}
           <span className={`rdp-status-chip ${statusClass}`}>
             {request.status}
           </span>
         </div>
       </header>
 
-      {/* ── Two-panel body ── */}
+      {/* ── Body ── */}
       <div className="rdp-body">
-        {/* Left: document */}
-        <PdfViewer request={request} />
+        <DocumentPanel request={request} isTQ={isTQ} />
 
-        {/* Right: agent panel */}
-        <div className="rdp-agent-panel">
-          {/* Overall summary */}
-          <OverallSummary request={request} />
+        <section className="rdp-agent" aria-label="Agent analysis">
+          <AgentLead request={request} />
+          <Plan
+            actions={recommendedActions}
+            request={request}
+            draft={draft}
+            isTQ={isTQ}
+          />
+          <AgentChecks agentResponses={agentResponses} />
 
-          {/* Per-agent responses */}
-          <div className="rdp-agents-heading">
-            <span className="rdp-agents-heading-label">Agent Responses</span>
-            <div className="rdp-agents-heading-line" />
+          <p className="rdp-indent rdp-note">
+            <Info size={12} aria-hidden="true" />
+            {flagSummary(agentResponses)}
+            {request.agentProcessedAt &&
+              ` · analysed ${request.agentProcessedAt}`}
+          </p>
+
+          <div className="rdp-indent rdp-actions">
+            <button
+              type="button"
+              className="rdp-btn rdp-btn-primary rdp-btn-lg"
+              disabled={!draft}
+            >
+              <Send size={14} aria-hidden="true" />
+              Send via Gmail
+            </button>
+            <button
+              type="button"
+              className="rdp-btn rdp-btn-lg"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil size={14} aria-hidden="true" />
+              Edit reply
+            </button>
+            <button
+              type="button"
+              className="rdp-btn rdp-btn-lg"
+              onClick={handleCopy}
+              disabled={!draft}
+            >
+              <Copy size={14} aria-hidden="true" />
+              {copied ? "Copied!" : "Copy"}
+            </button>
           </div>
-
-          <div className="rdp-agents-list">
-            {AGENTS.map((agent) => (
-              <AgentResponseCard
-                key={agent.key}
-                agent={agent}
-                response={agentResponses[agent.key]}
-              />
-            ))}
-          </div>
-
-          {/* Recommended actions */}
-          <RecommendedActions actions={recommendedActions} />
-
-          {/* Reply draft */}
-          <ReplyDraft request={request} />
-        </div>
+        </section>
       </div>
+
+      {editing && (
+        <ReplyDialog
+          request={request}
+          draft={draft}
+          onCancel={() => setEditing(false)}
+          onSave={(value) => {
+            setDraft(value);
+            setEditing(false);
+          }}
+        />
+      )}
     </div>
   );
 }

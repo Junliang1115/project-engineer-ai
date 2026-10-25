@@ -18,6 +18,34 @@ export async function fetchProjectsMeta() {
   return response.json();
 }
 
+async function requestJson(path, options) {
+  const response = await fetch(`${API_BASE_URL}${path}`, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.detail || `Request failed with status ${response.status}`);
+  }
+  return data;
+}
+
+const postJson = (path, body) =>
+  requestJson(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+/** Review details of one email activity: reason, proposed changes with current values and edit fields. */
+export const fetchActivityReview = (activityId) => requestJson(`/activities/${activityId}/review`);
+
+/** URL of a stored PDF (saved locally by the backend), for links and iframes. */
+export const documentFileUrl = (documentId) => `${API_BASE_URL}/documents/${documentId}/file`;
+
+/** The original email, read from Gmail by the backend. */
+export const fetchActivityEmail = (activityId) => requestJson(`/activities/${activityId}/email`);
+
+/** Approve (optionally with edited changes / record ID) or reject one proposed change. */
+export const decideActivityAction = (activityId, index, decision) =>
+  postJson(`/activities/${activityId}/actions/${index}`, decision);
+
+/** Close the review; undecided changes are rejected with the note. */
+export const closeActivityReview = (activityId, note) => postJson(`/activities/${activityId}/close`, { note });
+
 export async function triggerScanUpdates(options = {}) {
   const queryParams = new URLSearchParams();
   if (options.query) queryParams.set("query", options.query);

@@ -42,7 +42,7 @@ function getProjectRiskStats(project) {
 function isProjectActive(project) {
   const phase = (project.phase || "").toLowerCase();
   const isFinished = phase === "handover" && (project.progress >= 100 || project.progress == null);
-  const isClosed = phase === "closed" || phase === "complete" || phase === "completed";
+  const isClosed = phase === "closed" || phase === "completed";
   return !isFinished && !isClosed;
 }
 
@@ -119,7 +119,7 @@ export function ProjectsList({ projects, onSelectProject, onRefreshProjects, las
                 background: "rgba(255, 255, 255, 0.08)",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
                 borderRadius: "6px",
-                color: "#f0f0f0",
+                color: "var(--text)",
                 cursor: isScanning ? "not-allowed" : "pointer",
                 transition: "all 0.15s ease",
               }}

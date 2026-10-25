@@ -302,12 +302,12 @@
 
 .risk-priority.priority-critical {
   color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  background: var(--danger-tint);
 }
 
 .risk-priority.priority-high {
   color: var(--warning);
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  background: var(--warning-tint);
 }
 
 .risk-priority.priority-medium {

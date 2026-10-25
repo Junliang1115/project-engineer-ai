@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FileDiff, FileQuestion } from "lucide-react";
 import { ListRow } from "./components/ListRow.jsx";
+import { Tag } from "./components/Tag.jsx";
 import { FilterBar, FilterSegment } from "./components/FilterBar.jsx";
 import "./RequestSection.css";
 
@@ -25,7 +26,7 @@ function RequestCard({ request, onSelect }) {
       }
       meta={
         <>
-          <span className={`request-category ${kindClass}`}>{request.category}</span>
+          <Tag type={isTechnicalQuery ? "blue" : "gold"} size="sm">{request.category}</Tag>
           <span className="request-id technical-id">{request.id}</span>
           {request.createdAt && <span>{new Date(request.createdAt).toLocaleDateString()}</span>}
         </>
