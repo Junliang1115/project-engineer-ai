@@ -21,7 +21,7 @@ const seed = readFileSync(new URL("../backend/db/seed.sql", import.meta.url), "u
 
 assert.match(schema, /create table if not exists expenditure\b/i);
 assert.match(seed, /insert into\s+expenditure\b/i);
-assert.equal((seed.match(/'EXP-\d{3}'/g) || []).length, 30);
+assert.equal((seed.match(/'EXP-\d{3}'/g) || []).length, 53);
 // Readable IDs are zero-padded: phases to 2 digits, milestones, expenditures and risks to 3.
 assert.doesNotMatch(seed, /'(P|M|EXP|RSK)-[1-9]\d?'/);
 assert.match(schema, /create or replace function format_project_entity_id/i);
