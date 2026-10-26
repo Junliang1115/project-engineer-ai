@@ -1,8 +1,10 @@
 import importlib
 import json
+import re
 import sys
 import types
 import unittest
+from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,7 +15,7 @@ class FakeMCPServer:
     def __init__(self, *_args, **_kwargs):
         pass
 
-    def tool(self):
+    def tool(self, **_kwargs):
         return lambda function: function
 
     def run(self, **_kwargs):
@@ -25,6 +27,12 @@ sys.modules.setdefault("mcp.server", types.ModuleType("mcp.server"))
 mcpserver = types.ModuleType("mcp.server.mcpserver")
 mcpserver.MCPServer = FakeMCPServer
 sys.modules["mcp.server.mcpserver"] = mcpserver
+mcp_types = types.ModuleType("mcp.types")
+mcp_types.ToolAnnotations = lambda **kwargs: kwargs
+sys.modules.setdefault("mcp.types", mcp_types)
+mcp_exceptions = types.ModuleType("mcp.server.mcpserver.exceptions")
+mcp_exceptions.ToolError = type("ToolError", (Exception,), {})
+sys.modules.setdefault("mcp.server.mcpserver.exceptions", mcp_exceptions)
 psycopg = types.ModuleType("psycopg")
 psycopg.connect = lambda *_args, **_kwargs: None
 sys.modules["psycopg"] = psycopg
@@ -54,6 +62,7 @@ class FakeSchemaCursor:
         return [
             {"table_name": "milestone", "column_name": "milestone_id", "data_type": "text", "is_nullable": "NO"},
             {"table_name": "milestone", "column_name": "status", "data_type": "text", "is_nullable": "NO"},
+            {"table_name": "milestone", "column_name": "phase_id", "data_type": "text", "is_nullable": "YES"},
             {"table_name": "project_task", "column_name": "status", "data_type": "text", "is_nullable": "NO"},
             {"table_name": "session", "column_name": "title", "data_type": "text", "is_nullable": "NO"},
         ]
@@ -148,10 +157,12 @@ class ProjectEntityPolicyTest(unittest.TestCase):
         self.assertEqual(milestone["fields"]["status"]["allowed_values"], expected_statuses)
         self.assertEqual(result["entities"]["project_task"]["fields"]["status"]["allowed_values"], expected_statuses)
         self.assertNotIn("delete", milestone["operations"])
+        self.assertEqual(milestone["references"], {"phase_id": {"entity": "project_phase", "match": "project_id + phase_id"}})
+        self.assertFalse(hasattr(db, "get_database_schema"))  # agents never see tables outside the policy
 
     def test_schema_rejects_unknown_entity(self):
-        result = json.loads(db.get_project_entity_schema("session"))
-        self.assertEqual(result["status"], "rejected")
+        with self.assertRaisesRegex(ValueError, "Unsupported entity"):
+            db.get_project_entity_schema("session")
 
     def test_activity_log_is_not_agent_writable(self):
         self.assertNotIn("activity_log", db.PROJECT_ENTITY_POLICIES)
@@ -242,7 +253,8 @@ class ProjectEntityActionTest(unittest.TestCase):
         with patch.object(db, "_get_conn", return_value=connection):
             everything = json.loads(db.get_project_records("PRJ-2401"))
             one = json.loads(db.get_project_records("PRJ-2401", entity="milestone", record_id="M-001", limit=2))
-            unknown = json.loads(db.get_project_records("PRJ-2401", entity="session"))
+            with self.assertRaisesRegex(ValueError, "Unsupported entity"):
+                db.get_project_records("PRJ-2401", entity="session")
 
         self.assertEqual(set(everything["entities"]), set(db.PROJECT_ENTITY_POLICIES))
         self.assertEqual(everything["entities"]["milestone"]["id_column"], "milestone_id")
@@ -253,7 +265,6 @@ class ProjectEntityActionTest(unittest.TestCase):
         self.assertEqual(query, "SELECT * FROM milestone WHERE project_id = %s AND milestone_id = %s ORDER BY milestone_id LIMIT %s")
         self.assertEqual(params, ("PRJ-2401", "M-001", 3))  # One extra row tells whether the list was truncated.
         self.assertEqual((len(one["entities"]["milestone"]["records"]), one["entities"]["milestone"]["truncated"]), (2, True))
-        self.assertEqual(unknown["status"], "rejected")
 
     def test_update_uses_policy_identifiers_and_parameterized_values(self):
         connection = RecordingConnection(target={"milestone_id": "milestone-1", "project_id": "PRJ-2401", "status": "planned"})
@@ -343,6 +354,188 @@ class ProjectEntityActionTest(unittest.TestCase):
         with patch.object(db, "_get_conn", return_value=connection):
             result = json.loads(db.apply_project_entity_action(action_model(self.update)))
         self.assertEqual(result["status"], "rejected")
+
+
+class QueryConnection:
+    """Records queries and returns fixed rows; usable as `with _get_conn() as conn`."""
+
+    def __init__(self, rows=(), row=None):
+        self.rows, self.row, self.queries = list(rows), row, []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def execute(self, query, params=()):
+        self.queries.append((" ".join(query.split()), params))
+        return self
+
+    def fetchall(self):
+        return self.rows
+
+    def fetchone(self):
+        return self.row
+
+
+class ReadToolContractTest(unittest.TestCase):
+    """Every read tool returns {"status": "ok", ...} or raises; no project is assumed."""
+
+    def test_project_id_is_required_and_never_defaults(self):
+        for tool in (db.get_project_records, db.list_project_documents):
+            with self.subTest(tool=tool.__name__):
+                with self.assertRaisesRegex(ValueError, "project_id is required"):
+                    tool(project_id="  ")
+
+    def test_narrow_tools_are_replaced_by_the_query_tools(self):
+        for name in ("get_project_requests", "get_recent_activity_logs", "insert_project_request", "get_database_schema"):
+            with self.subTest(tool=name):
+                self.assertFalse(hasattr(db, name))
+
+    def test_missing_document_raises(self):
+        with patch.object(db, "_get_conn", return_value=QueryConnection(row=None)):
+            with self.assertRaisesRegex(LookupError, "Document doc-1 not found"):
+                db.get_document_text("doc-1")
+
+    def test_sql_rejections_raise(self):
+        with self.assertRaisesRegex(ValueError, "Only SELECT"):
+            db.read_only_sql_query("DELETE FROM risk_register")
+        with self.assertRaisesRegex(ValueError, "forbidden keyword"):
+            db.read_only_sql_query("WITH x AS (DELETE FROM risk_register RETURNING *) SELECT * FROM x")
+
+
+class TableConnection(QueryConnection):
+    """Answers the column lookup from `columns`, and every other query with `rows`."""
+
+    def __init__(self, columns, rows=()):
+        super().__init__(rows=rows)
+        self.columns = columns
+        self.last = ""
+
+    def execute(self, query, params=()):
+        self.last = query
+        return super().execute(query, params)
+
+    def fetchall(self):
+        if "information_schema" in self.last:
+            return [{"column_name": name, "data_type": kind} for name, kind in self.columns.items()]
+        return self.rows
+
+    @property
+    def data_query(self):
+        return self.queries[-1]
+
+
+TASK_COLUMNS = {"task_id": "text", "project_id": "text", "milestone_id": "text", "task_name": "text",
+                "status": "text", "planned_end_date": "date", "cost_actual": "numeric"}
+RISK_COLUMNS = {"risk_id": "text", "project_id": "text", "title": "text", "affected_areas": "ARRAY",
+                "status": "text", "created_at": "timestamp with time zone"}
+ACTIVITY_COLUMNS = {"activity_id": "uuid", "project_id": "text", "title": "text", "summary": "text",
+                    "source_path": "text", "processing_details": "jsonb", "created_at": "timestamp with time zone"}
+
+
+class QueryRecordsTest(unittest.TestCase):
+    def query(self, columns, *args, rows=(), **kwargs):
+        connection = TableConnection(columns, rows)
+        with patch.object(db, "_get_conn", return_value=connection):
+            result = json.loads(db.query_records(*args, **kwargs))
+        return result, connection.data_query
+
+    def test_filters_become_parameterised_sql_with_typed_values(self):
+        result, (sql, params) = self.query(
+            TASK_COLUMNS, "project_task", "PRJ-2401",
+            filters=[{"field": "status", "op": "=", "value": "blocked"},
+                     {"field": "planned_end_date", "op": "<", "value": "2026-11-01"},
+                     {"field": "milestone_id", "op": "in", "value": ["M-006", "M-007"]}],
+            fields=["task_name"], order_by="planned_end_date", limit=2,
+            rows=[{"task_id": "TSK-1"}, {"task_id": "TSK-2"}, {"task_id": "TSK-3"}],
+        )
+
+        self.assertEqual(sql, "SELECT project_id, task_id, task_name FROM project_task WHERE project_id = %s "
+                              "AND status = %s AND planned_end_date < %s AND milestone_id = ANY(%s) "
+                              "ORDER BY planned_end_date ASC, task_id LIMIT %s OFFSET %s")
+        self.assertEqual(params, ("PRJ-2401", "blocked", date(2026, 11, 1), ["M-006", "M-007"], 3, 0))
+        self.assertEqual(result["records"], [{"task_id": "TSK-1"}, {"task_id": "TSK-2"}])
+        self.assertEqual(result["next_cursor"], "2")
+
+    def test_cross_project_search_and_contains(self):
+        result, (sql, params) = self.query(
+            RISK_COLUMNS, "risk_register",
+            filters=[{"field": "title", "op": "contains", "value": "50%_off"},
+                     {"field": "affected_areas", "op": "contains", "value": "Schedule"},
+                     {"field": "created_at", "op": ">=", "value": "2026-01-01"}],
+            cursor="50", descending=True, order_by="created_at",
+        )
+
+        self.assertEqual(sql, "SELECT project_id, risk_id, title, affected_areas, status, created_at FROM risk_register "
+                              "WHERE title ILIKE %s AND %s = ANY(affected_areas) AND created_at >= %s "
+                              "ORDER BY created_at DESC, risk_id LIMIT %s OFFSET %s")
+        self.assertEqual(params, ("%50\\%\\_off%", "Schedule", datetime(2026, 1, 1), 51, 50))
+        self.assertIsNone(result["project_id"])
+        self.assertIsNone(result["next_cursor"])
+
+    def test_read_only_entity_hides_private_columns(self):
+        _, (sql, _) = self.query(ACTIVITY_COLUMNS, "activity_log", "PRJ-2401")
+
+        self.assertEqual(sql.split(" FROM")[0], "SELECT project_id, activity_id, title, summary, created_at")
+        with self.assertRaisesRegex(ValueError, "Unknown field 'processing_details'"):
+            self.query(ACTIVITY_COLUMNS, "activity_log", filters=[{"field": "processing_details", "op": "not_null"}])
+
+    def test_bad_queries_explain_what_is_wrong(self):
+        cases = [
+            (("user",), {}, "Unknown entity 'user'; readable entities: project, "),
+            (("project_task",), {"fields": ["password"]}, "Unknown field 'password'"),
+            (("project_task",), {"filters": [{"field": "planned_end_date", "op": "<", "value": "1/10/2026"}]},
+             "'1/10/2026' is not a valid date for planned_end_date"),
+            (("project_task",), {"filters": [{"field": "status", "op": "=", "value": ["a", "b"]}]}, "takes one value"),
+            (("project_task",), {"filters": [{"field": "status", "op": "in", "value": "blocked"}]}, "needs a non-empty list"),
+            (("project_task",), {"filters": [{"field": "status", "op": "="}]}, "needs a value"),
+            (("project_task",), {"filters": [{"field": "planned_end_date", "op": "contains", "value": "2026"}]},
+             "contains only works on text or list fields"),
+            (("project_task",), {"order_by": "nope"}, "Unknown field 'nope'"),
+            (("project_task",), {"cursor": "abc"}, "cursor must be the next_cursor"),
+        ]
+        for args, kwargs, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, re.escape(message)):
+                    self.query(TASK_COLUMNS, *args, **kwargs)
+
+    def test_unknown_operator_is_rejected_by_the_filter_model(self):
+        with self.assertRaises(ValueError):  # pydantic's ValidationError is a ValueError
+            self.query(TASK_COLUMNS, "project_task", filters=[{"field": "status", "op": "LIKE", "value": "x"}])
+
+
+class AggregateRecordsTest(unittest.TestCase):
+    def aggregate(self, columns, *args, rows=(), **kwargs):
+        connection = TableConnection(columns, rows)
+        with patch.object(db, "_get_conn", return_value=connection):
+            result = json.loads(db.aggregate_records(*args, **kwargs))
+        return result, connection.data_query
+
+    def test_grouped_totals(self):
+        columns = {"expenditure_id": "text", "project_id": "text", "milestone_id": "text", "actual_amount": "numeric"}
+        result, (sql, params) = self.aggregate(
+            columns, "expenditure", ["count", "sum:actual_amount"], "PRJ-2401", group_by=["milestone_id"],
+            rows=[{"milestone_id": "M-006", "count": 3, "sum_actual_amount": "15100000.00"}],
+        )
+
+        self.assertEqual(sql, "SELECT milestone_id, count(*) AS count, sum(actual_amount) AS sum_actual_amount "
+                              "FROM expenditure WHERE project_id = %s GROUP BY milestone_id ORDER BY milestone_id LIMIT %s")
+        self.assertEqual(params, ("PRJ-2401", db.MAX_GROUPS + 1))
+        self.assertEqual(result["groups"][0]["milestone_id"], "M-006")
+        self.assertFalse(result["truncated"])
+
+    def test_bad_metrics_explain_what_is_wrong(self):
+        for metrics, group_by, message in (
+            ([], None, "metrics needs at least one item"),
+            (["median:cost_actual"], None, "Unknown metric 'median:cost_actual'"),
+            (["sum:status"], None, "sum needs a number field; status is text"),
+            (["count"], ["status", "task_id", "milestone_id", "task_name"], "group_by takes at most 3 fields"),
+        ):
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(ValueError, re.escape(message)):
+                    self.aggregate(TASK_COLUMNS, "project_task", metrics, group_by=group_by)
 
 
 if __name__ == "__main__":

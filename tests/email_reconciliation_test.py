@@ -151,8 +151,9 @@ class ModelConfigTest(unittest.TestCase):
                 "task_id": {"writable": True, "type": "string", "create_only": True, "required_on_create": True},
                 "created_at": {"writable": False},
             },
-        }}}
+        }, "activity_log": {"id_column": "activity_id", "operations": [], "fields": {"title": {"writable": False}}}}}
         text = describe_allowed_changes(schema)
+        self.assertNotIn("activity_log", text)  # read-only entities are not offered as changes
         self.assertIn("- project_task (create, update; record_id = task_id)", text)
         self.assertIn("status: one of planned, in_progress, completed, blocked", text)
         self.assertIn("task_id: string (create only, required on create)", text)

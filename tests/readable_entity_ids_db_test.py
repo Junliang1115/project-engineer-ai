@@ -50,8 +50,9 @@ class ReadableEntityIdsDbTest(unittest.TestCase):
     def test_seed_loads_with_readable_ids(self):
         self.apply_schema()
         self.conn.execute((DB_DIR / "seed.sql").read_text(encoding="utf-8"))
-        self.assertEqual(self.scalar("select phase_id from project_phase where name = 'Construction'"), "P-05")
-        self.assertEqual(self.scalar("select count(*) from expenditure where expenditure_id ~ '^EXP-[0-9]{3}$'"), 30)
+        self.assertEqual(self.scalar("select phase_id from project_phase where project_id = 'PRJ-2401' and name = 'Construction'"), "P-05")
+        self.assertEqual(self.scalar("select count(*) from expenditure where expenditure_id ~ '^EXP-[0-9]{3}$'"), 53)
+        self.assertEqual(self.scalar("select next_project_entity_id('PRJ-05', 'risk')"), "RSK-005")
         self.assertEqual(self.scalar("select next_project_entity_id('PRJ-2401', 'risk')"), "RSK-005")
         self.assertEqual(self.scalar("select next_project_entity_id('PRJ-2401', 'milestone')"), "M-010")
 

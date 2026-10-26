@@ -14,13 +14,13 @@ This platform supports project engineering teams by combining chat-based assista
 ## Agents
 
 - **Orchestration Agent**: Coordinates agent workflows, routes user requests, and combines outputs into a single response.
-- **Reconciliation Agent**: Automatically ingests communications (e.g., Gmail daily reports), extracts progress updates, verifies facts against the PostgreSQL database, and safely applies verified task status changes.
+- **Reconciliation Agent**: Reads incoming project emails (e.g. Gmail daily reports) and their PDF attachments, proposes the record changes they report, checks them against the database rules, and queues them for an engineer to approve.
 - **Risk Estimation Agent**: Estimates the likelihood and impact of risks based on reconciled project data.
 - **Compliance Agent**: Reviews designs, materials, and project documentation against regulatory standards.
 
 ## Automated Reconciliation System
 
-The platform features an autonomous, background reconciliation pipeline that reconciles incoming emails (progress reports, daily logs, and technical queries) with the PostgreSQL project database and reflects live status in the UI without requiring human intervention.
+The reconciliation pipeline turns incoming project emails (daily reports, progress updates, technical queries, change orders) into **proposed** database changes that an engineer reviews. The AI reads and proposes; it never writes project records. Changes are applied only when a person approves them on the email review page.
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -29,68 +29,97 @@ The platform features an autonomous, background reconciliation pipeline that rec
 |  [Gmail Inbox]                                                                    |
 |        |                                                                          |
 |        v                                                                          |
-|  (1. Poll Messages) --------> Skip already processed messages (deduplication)     |
+|  (1. Fetch & dedupe) -------> Skip emails already in activity_log; save + parse   |
+|        |                      PDF attachments                                     |
+|        v                                                                          |
+|  (2. Identify project) -----> AI picks the project from the real project list     |
 |        |                                                                          |
 |        v                                                                          |
-|  (2. LLM Extraction) -------> LLM extracts: Project, Task, Status, Quote     |
+|  (3. AI extraction) --------> Categories, summary, dates, proposed changes        |
 |        |                                                                          |
 |        v                                                                          |
-|  (3. DB Context Lookup) ----> Database MCP checks current task status & timestamps|
+|  (4. Grounding) ------------> Warnings: IDs not in the email, unverified dates... |
 |        |                                                                          |
 |        v                                                                          |
-|  (4. Deterministic Rules) --> Enforce forward transitions & quarantine risks      |
-|        |                      (Change orders & conflicts -> 'needs_review')       |
+|  (5. Rule check & log) -----> Database MCP checks every change, rolls back,       |
+|        |                      logs the email as needs_review                      |
 |        v                                                                          |
-|  (5. Record for Review) ----> Write proposed actions to `activity_log`             |
-|        |                                                                          |
-|        v                                                                          |
-|  [Frontend UI] -------------> Real-time Milestone cards & interactive Task Log    |
+|  (6. Human review) ---------> Engineer approves / edits / rejects each change     |
+|                               -> only approved changes are written                |
 +-----------------------------------------------------------------------------------+
 ```
 
-### Detailed Pipeline Stages
+### Pipeline Stages
 
-#### 1. Ingestion & Deduplication
-- **Scheduled Scanner (`backend/reconciliation/scan_updates.py`)**: Runs automatically on a configurable cron schedule (e.g. every 15 minutes via `deploy/install-gmail-cron.sh`) or manually via CLI.
-- **OAuth Read-Only Scope**: Uses `backend/integrations/gmail_service.py` with minimal `gmail.readonly` permissions to fetch inbox messages.
-- **Idempotency**: Message IDs are verified against existing entries in `activity_log.source_path`. Already-processed messages are immediately skipped, preventing double-processing.
+#### 1. Fetch & Deduplicate
+- **Trigger**: `POST /scan-gmail` from the app, or the CLI: `python backend/reconciliation/scan_updates.py --query "label:INBOX newer_than:7d" --limit 25` (add `--dry-run` to write nothing).
+- **Gmail access**: `backend/integrations/gmail_service.py`, read-only (`gmail.readonly`) scope.
+- **Deduplication**: an email already in `activity_log` (`source_type='gmail'`, `source_path=<message id>`) is skipped before any AI call. A unique index on `(source_type, source_path)` makes reprocessing a no-op.
+- **PDF attachments**: are saved first (`backend/documents/document_store.py`, content-addressed under `public/request/`), then parsed with pdfplumber (`pdf_extractor.py`), so a file is never lost if parsing fails. Their text and tables go to the AI with the email.
 
-#### 2. AI Parsing & Extraction
-- Powered by LangChain and DeepSeek (`backend/reconciliation/email_reconciliation.py`) using structured model output.
-- The model reads the allowed entities and fields from the Database MCP (`get_project_entity_schema`) and returns an `EmailExtraction`: categories, project ID, reported date, summary, the proposed project actions and any unresolved issue.
+#### 2. Identify the Project
+`identify_project()` gives the AI every project (ID, name, client, location) from the Database MCP's `list_projects`. It returns the matching project with evidence and a confidence level. An ID that isn't in the list is dropped, so the AI can never invent a project. The project's current records are then loaded (`get_project_records`) so the AI can match names like "Work package release" to the real ID `M-007`.
+
+#### 3. AI Extraction
+`classify_email()` in `backend/reconciliation/email_reconciliation.py` (LangChain + DeepSeek, structured output) returns:
 
 ```python
 class EmailAction(BaseModel):
     operation: Literal["create", "update"]
     entity: str                       # e.g. "project_task", "request", "risk_register"
-    record_id: str = ""               # exactly as written in the email; empty for create
-    changes: list[FieldChange]        # field/value pairs from the allowed changes list
+    record_id: str = ""               # empty for create
+    changes: list[FieldChange]        # only fields the Database MCP allows
     evidence: str                     # short quote from the email
     confidence: Literal["high", "medium", "low"]
 
+class EmailDate(BaseModel):
+    date: date                        # numeric dates are day-first: 1/10/2026 = 1 Oct 2026
+    kind: Literal["reported", "planned", "due", "delayed_to", "other"]
+    evidence: str                     # the exact words that state the date
+
 class EmailExtraction(BaseModel):
-    categories: list[ActivityCategory]
-    project_id: str
-    reported_date: date | None
-    summary: str
-    actions: list[EmailAction]        # one per change the email states
-    unresolved_issue: str             # a problem no action records
+    categories: list[ActivityCategory]   # e.g. daily_update, technical_query, change_order
+    project_id: str                      # from step 2, not from this step
+    dates: list[EmailDate]               # every date in the email and attachments
+    reported_date: date | None           # only the "reported" date; never a planned or delay date
+    summary: str                         # always mentions any problem, block or delay
+    actions: list[EmailAction]
 ```
 
-#### 3. Deterministic Reconciler & Safety Guardrails
-To prevent hallucinations and protect project data integrity, the pipeline applies hard deterministic guardrails:
-- **Human Review**: Email actions are never applied automatically. Every proposed action is recorded in `activity_log` as `needs_review` for a person to approve.
-- **Grounding**: The model sees the project's current records, so it can match a named record to its ID. Every cited ID should appear exactly in the email; IDs matched by name from the records are flagged for the reviewer, and IDs in neither are reported. A task status change needs a date stated in the email (`ground_email`). Problems are shown to the reviewer as the reason.
-- **Same Rules as Agents**: Each proposed action is checked against the Database MCP's entity policies, status transitions (see `backend/core/project_rules.py`) and evidence rules, then rolled back. The result (`ok` or the blocking rule) is stored with the action.
-- **Change Orders**: A new `CO-` reference is proposed as an `open` request; it is never approved automatically.
-- **Untrusted Content Sanitization**: Raw email text is treated as untrusted data. The LLM cannot construct or execute raw SQL.
+- The prompt lists exactly the entities, fields and values the Database MCP accepts (`get_project_entity_schema`).
+- Email and attachment content is treated as untrusted. The prompt tells the model to ignore instructions inside it, and the model has no SQL or write tools.
+- Dates are read by the model in any format; there is no regex date parsing, and the email's sent date is never used.
 
-#### 4. Recording via the Database MCP
-Database operations are handled through the Database MCP server (`backend/mcp_servers/mcp_db_server.py`):
-- **`get_project_entity_schema`**: Supplies the allowed changes for the prompt.
-- **`list_projects`** / **`get_project_records`**: Find the project the email mentions and load its current records (every policy entity, scoped to the project) for the prompt and the existence check.
-- **`record_email_decision`**: Writes one `activity_log` row per email (`source_type='gmail'`, `source_path=<Message ID>`, `processing_state='needs_review'|'no_change'`) with sender, evidence, reason and the checked `proposed_actions` in `processing_details`. It never changes project records.
-  - Protected by a unique index on `activity_log(source_type, source_path)`.
+#### 4. Grounding
+`ground_email()` checks the AI's answer against the email text and adds **warnings** for the reviewer. Warnings never drop the proposal:
+- **Email-level warnings**: no project identified, project not in the database, project identified with low confidence, or an empty email.
+- **Per-change warnings**: every cited ID should appear exactly in the email (`TSK-10` does not match `TSK-102`). An ID found only in the project records is flagged "matched by name, not written in the email"; an ID in neither is flagged as unknown.
+- **Date status** (task status changes): `missing` when there is no reported date, `unverified` when the quoted date words aren't in the email, otherwise `ok`.
+
+#### 5. Rule Check & Activity Log
+`record_email_decision` in the Database MCP (`backend/mcp_servers/mcp_db_server.py`) checks every proposed change with **the same validator and write path that agents use**, inside a transaction that is always rolled back:
+- entity policies, allowed fields and evidence (`_validate_project_action`);
+- same-project references, status transitions (`backend/core/project_rules.py`) and duplicate creates (`_apply_project_action`).
+
+Each change is stored with its `check` result (`ok` or the rule that would block it), and the email is logged as one `activity_log` row with `processing_state='needs_review'`. `processing_details` keeps the sender, categories, summary, proposed changes, warnings, dates and project evidence. Every email goes to review, including general updates with nothing to change (their summary is the remark). A new `CO-` change-order reference is proposed as an `open` request, which records it but doesn't approve it.
+
+#### 6. Human Review
+The activity log opens each email in the review page (`src/ActivityReview.jsx`). The page shows the original email (fetched from Gmail when opened, never stored), its attachments, the warnings, and every proposed change as *current → proposed*. `backend/reconciliation/activity_review.py` handles the decisions:
+- **Approve**, optionally after editing the values or the record ID (edits are marked "Set by reviewer"). The change is applied immediately through the same validator and write path; a rule violation changes nothing.
+- **Reject**, with a required note.
+- **Close**, which rejects any undecided changes.
+
+When every change is decided, the email becomes `applied` (at least one approved), `rejected` or `no_change`. Review is deliberately **not** an MCP tool, so no agent can approve its own proposals.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /scan-gmail` | Run one scan (`query`, `limit`, `dry_run`) |
+| `GET /activities/{id}/review` | Proposed changes with current values, warnings and date status |
+| `GET /activities/{id}/email` | The original email from Gmail |
+| `POST /activities/{id}/actions/{index}` | Approve or reject one change |
+| `POST /activities/{id}/close` | Close the email, rejecting undecided changes |
+
+The `/agent-runs` chat uses the same pipeline in dry-run mode: it reports what an email would put up for review, without writing anything.
 
 
 ## Knowledge Bank

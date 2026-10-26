@@ -142,6 +142,8 @@ def describe_allowed_changes(entity_schema: dict | None) -> str:
         return "(unavailable: propose no actions)"
     lines = []
     for name, entity in entity_schema["entities"].items():
+        if not entity.get("operations"):
+            continue  # read-only entity
         lines.append(f"- {name} ({', '.join(entity['operations'])}; record_id = {entity['id_column']})")
         for field, spec in entity["fields"].items():
             if not spec.get("writable"):
@@ -247,6 +249,21 @@ def _invoke_structured(model, schema, prompt):
         if result is not None:
             return result if isinstance(result, schema) else schema.model_validate(result)
     raise ExtractionError(f"The model returned no structured extraction after {EXTRACTION_ATTEMPTS} attempts")
+
+
+async def _ainvoke_structured(model, schema, prompt, replies: list | None = None):
+    """Async _invoke_structured; appends each raw model reply to `replies` (for token counts)."""
+    structured = model.with_structured_output(schema, include_raw=True)
+    error = None
+    for _ in range(EXTRACTION_ATTEMPTS):
+        output = await structured.ainvoke(prompt)
+        if replies is not None:
+            replies.append(output["raw"])
+        result, error = output["parsed"], output["parsing_error"] or error
+        if result is not None:
+            return result if isinstance(result, schema) else schema.model_validate(result)
+    reason = f" (last error: {str(error)[:300]})" if error else ""
+    raise ExtractionError(f"The model returned no structured extraction after {EXTRACTION_ATTEMPTS} attempts{reason}")
 
 
 def describe_projects(projects: list[dict]) -> str:
