@@ -1,6 +1,10 @@
 import asyncio
+import contextlib
+import hashlib
+import io
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,8 +20,11 @@ from backend.agents.calculator import (
     CALCULATOR_TOOLS, add_days, calculate, days_between, percent_change, schedule_slip,
 )
 from backend.agents.mcp_tools import MAX_RESULT_CHARS, READ_TOOLS, langchain_tools
-from backend.agents.risk import MAX_TRACE_RESULT_CHARS, Limits, risk_agent_tools, run_agent
-from backend.reconciliation.scan_updates import database_tools
+from backend.agents.risk import (
+    DEFAULT_QUESTION, MAX_TRACE_RESULT_CHARS, PROMPT_FILE, PROMPT_VERSION, REPORT_PROMPT, SYSTEM_PROMPT, Limits,
+    _load_prompts, _print_run, risk_agent_tools, run_agent, run_result, run_risk_agent,
+)
+from backend.mcp_servers.client import database_session
 
 
 class CalculatorToolTest(unittest.TestCase):
@@ -300,7 +307,7 @@ class TraceTest(unittest.IsolatedAsyncioTestCase):
 
         trace = state["trace"]
         self.assertEqual([(e["type"], e.get("turn")) for e in trace],
-                         [("model", 1), ("tool", 1), ("tool", 1), ("model", 2), ("report", None)])
+                         [("model", 1), ("tool", 1), ("tool", 1), ("model", 2), ("report", None), ("validate", None)])
         self.assertEqual({k: trace[0][k] for k in ("status", "tokens", "tool_calls")},
                          {"status": "ok", "tokens": 1200, "tool_calls": ["days_between", "add_days"]})
         self.assertEqual(trace[3]["tool_calls"], [])
@@ -356,7 +363,7 @@ class TraceTest(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(entry["duration_ms"], 100)
 
         state = await run_agent("Hello", HangingModel(replies=[]), limits=Limits(max_seconds=0.2, report_seconds=0.2))
-        self.assertEqual([(e["type"], e["status"]) for e in state["trace"]], [("model", "timed_out"), ("report", "failed")])
+        self.assertEqual([(e["type"], e["status"]) for e in state["trace"]], [("model", "timed_out"), ("report", "failed"), ("validate", "skipped")])
 
     async def test_long_results_are_shortened_in_the_trace_only(self):
         model = ScriptedModel(replies=[ask_tools(("long_report", {"record_id": "M-006"})), AIMessage(content="Done.")])
@@ -402,7 +409,7 @@ class ReportTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("6.3", [m.content for m in report_call if isinstance(m, ToolMessage)])
         self.assertIn("write your risk report", report_call[-1].content)
         self.assertNotIn("stopped", report_call[-1].content)
-        self.assertEqual(state["trace"][-1] | {"started_at": 0, "duration_ms": 0},
+        self.assertEqual(state["trace"][-2] | {"started_at": 0, "duration_ms": 0},
                          {"type": "report", "status": "ok", "tokens": 900, "findings": 1, "error": None,
                           "started_at": 0, "duration_ms": 0})
         self.assertEqual(state["tokens"], 900)
@@ -439,7 +446,7 @@ class ReportTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(state["report"])
         self.assertIn("after 2 attempts", state["report_error"])
         self.assertIn("confidence", state["report_error"])  # the last validation error says why
-        self.assertEqual(state["trace"][-1]["status"], "failed")
+        self.assertEqual(state["trace"][-2]["status"], "failed")
         self.assertEqual(state["messages"][-1].content, "Done.")  # the conversation is kept
 
     async def test_a_hanging_report_is_cut_off_at_its_own_limit(self):
@@ -447,6 +454,139 @@ class ReportTest(unittest.IsolatedAsyncioTestCase):
             run_agent("Hello", HangingModel(replies=[]), limits=Limits(max_seconds=0.2, report_seconds=0.3)), 2)
 
         self.assertEqual(state["report_error"], "The report took longer than 0.3 seconds")
+
+
+@tool
+def records(project_id: str) -> str:
+    """Stands in for a database read tool: M-006 and TSK-102 on PRJ-2401, RSK-001 on PRJ-03."""
+    if project_id == "PRJ-03":
+        return json.dumps({"status": "ok", "project_id": "PRJ-03", "risks": [{"risk_id": "RSK-001"}]})
+    if project_id != "PRJ-2401":
+        raise ValueError(f"Unknown project {project_id!r}")
+    return json.dumps({"status": "ok", "project_id": "PRJ-2401", "entities": {
+        "milestone": [{"milestone_id": "M-006", "planned_amount": "14200000.00", "actual_amount": "15100000.00",
+                       "planned_date": "2026-09-21"}],
+        "task": [{"task_id": "TSK-102", "name": "Envelope"}],
+    }})
+
+
+@tool
+def document() -> str:
+    """Stands in for a read tool whose result is not JSON and names no project."""
+    return "Site diary: M-006 delayed by rain."
+
+
+VALIDATION_TOOLS = CALCULATOR_TOOLS + [records, document]
+
+
+def finding(statement="M-006 is 6.3% over budget.", evidence=(("PRJ-2401", "M-006"),), calculations=(),
+            precedents=()):
+    return {"statement": statement, "confidence": "high",
+            "evidence": [{"project_id": project, "record_id": record} for project, record in evidence],
+            "historical_precedents": [{"project_id": project, "record_id": record} for project, record in precedents],
+            "calculations": [{"description": f"result {index}", "tool": name, "result": result}
+                             for index, (name, result) in enumerate(calculations)]}
+
+
+async def validated(*findings, summary="Cost risk.", calls=(), question="Risks?"):
+    """Run the agent: one turn of tool calls, an answer, then a report with these findings."""
+    replies = ([ask_tools(*calls)] if calls else []) + [AIMessage(content="Done."), report_reply(summary, findings)]
+    return await run_agent(question, ScriptedModel(replies=replies), VALIDATION_TOOLS)
+
+
+def warnings(state, index=0):
+    return state["report"]["findings"][index]["warnings"]
+
+
+READ_PRJ_2401 = ("records", {"project_id": "PRJ-2401"})
+OVERRUN_CALL = ("percent_change", {"baseline": 14200000, "actual": 15100000})
+
+
+class ValidationTest(unittest.IsolatedAsyncioTestCase):
+    async def test_a_report_backed_by_its_tool_results_has_no_warnings(self):
+        state = await validated(
+            finding("M-006 is 6.3% over budget (planned 14,200,000; due 2026-09-21).",
+                    evidence=[("PRJ-2401", "M-006"), ("PRJ-2401", "TSK-102")],
+                    calculations=[("percent_change", "6.3")], precedents=[("PRJ-03", "RSK-001")]),
+            summary="One cost risk in the next 30 days.",
+            calls=[READ_PRJ_2401, ("records", {"project_id": "PRJ-03"}), OVERRUN_CALL],
+            question="Risks on PRJ-2401 in the next 30 days?")
+
+        self.assertEqual(state["report"]["warnings"], [])
+        self.assertEqual(warnings(state), [])
+        self.assertEqual({k: state["trace"][-1][k] for k in ("type", "status", "warnings")},
+                         {"type": "validate", "status": "ok", "warnings": 0})
+
+    async def test_a_cited_id_must_be_in_a_tool_result_whole_and_with_its_project(self):
+        state = await validated(
+            finding("Envelope work is late.", evidence=[("PRJ-2401", "TSK-10"), ("PRJ-2401", "TSK-999"),
+                                                        ("PRJ-03", "M-006")],
+                    precedents=[("PRJ-2401", "RSK-001")]),
+            calls=[READ_PRJ_2401, ("records", {"project_id": "PRJ-03"})])
+
+        self.assertEqual(warnings(state), [
+            "Evidence TSK-10 is not in any tool result",  # TSK-102 was read, not TSK-10
+            "Evidence TSK-999 is not in any tool result",
+            "Evidence M-006 was read in PRJ-2401, not PRJ-03",
+            "Precedent RSK-001 was read in PRJ-03, not PRJ-2401",
+        ])
+        self.assertEqual(state["trace"][-1]["warnings"], 4)
+
+    async def test_text_without_a_project_counts_only_if_it_names_the_project(self):
+        state = await validated(finding("Rain delays M-006."), calls=[("document", {})])
+
+        self.assertEqual(warnings(state), ["Evidence M-006 is not in any tool result"])
+
+    async def test_a_failed_tool_call_is_not_a_source(self):
+        # The error message quotes the arguments, but an error is never evidence.
+        state = await validated(finding("Overrun."), calls=[("records", {"project_id": "PRJ-2401 M-006"})])
+
+        self.assertEqual(warnings(state), ["Evidence M-006 is not in any tool result"])
+
+    async def test_a_calculation_must_match_a_calculator_call_from_this_run(self):
+        state = await validated(
+            finding("Overrun.", calculations=[("percent_change", "6.3"), ("percent_change", "6.4"),
+                                              ("days_between", "10"), ("records", "14200000"),
+                                              ("calculate", "6.34"), ("calculate", "6.3%"),
+                                              ("calculate", "about six percent")]),
+            calls=[READ_PRJ_2401, OVERRUN_CALL,
+                   ("calculate", {"expression": "(15100000 - 14200000) / 14200000 * 100"})])
+
+        self.assertEqual(warnings(state), [  # 6.34 and 6.3 are 6.338... rounded
+            "Calculation 'result 1': '6.4' is not a result percent_change returned",
+            "Calculation 'result 2': days_between was not called in this run",
+            "Calculation 'result 3': records is not a calculator tool",
+            "Calculation 'result 6': 'about six percent' is not a result calculate returned",
+        ])
+
+    async def test_numbers_in_statements_and_summary_must_come_from_a_tool(self):
+        state = await validated(
+            finding("M-006 is 15.1M against 14.2M planned, 6.3% over, 25% under on P-02, due 2026-09-30."),
+            summary="Two risks, 12 days of slip.",
+            calls=[READ_PRJ_2401, OVERRUN_CALL, ("percent_change", {"baseline": 200, "actual": 150})])
+
+        # 15.1M is the model scaling 15100000 itself; -25.0 may be written as "25% under".
+        self.assertEqual(warnings(state), ["Numbers in the statement that no tool returned: 2026-09-30, 15.1, 14.2"])
+        self.assertEqual(state["report"]["warnings"], ["Numbers in the summary that no tool returned: 12"])
+
+    async def test_a_failed_report_is_not_validated(self):
+        model = ScriptedModel(replies=[AIMessage(content="Done."), AIMessage(content="prose"), AIMessage(content="prose")])
+
+        state = await run_agent("Risks?", model)
+
+        self.assertIsNone(state["report"])
+        self.assertEqual(state["trace"][-1]["type"], "validate")
+        self.assertEqual(state["trace"][-1]["status"], "skipped")
+
+    async def test_a_run_stopped_by_a_limit_is_still_validated(self):
+        replies = [ask_tools(READ_PRJ_2401), ask_tools(OVERRUN_CALL),
+                   report_reply("Partial.", [finding(calculations=[("percent_change", "6.3")])])]
+
+        state = await run_agent("Risks?", ScriptedModel(replies=replies), VALIDATION_TOOLS, Limits(max_tool_calls=1))
+
+        self.assertEqual(state["stopped_reason"], "tool_calls")
+        self.assertEqual(warnings(state), ["Calculation 'result 0': percent_change was not called in this run",
+                                           "Numbers in the statement that no tool returned: 6.3"])
 
 
 def mcp_tool(name, **properties):
@@ -525,18 +665,102 @@ class McpToolsTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("apply_project_entity_action", model.bound_tools)
 
 
+class PromptFileTest(unittest.TestCase):
+    def test_prompts_come_from_the_file_by_section(self):
+        self.assertTrue(SYSTEM_PROMPT.startswith("You are a project risk engineer"))
+        self.assertTrue(REPORT_PROMPT.startswith("Stop calling tools"))
+        self.assertNotIn("## ", SYSTEM_PROMPT + REPORT_PROMPT)
+        self.assertEqual(PROMPT_VERSION, hashlib.sha256(PROMPT_FILE.read_bytes()).hexdigest()[:12])
+
+    def test_any_edit_gives_a_new_version(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "risk.md"
+            path.write_text("# Title\n\n## System\nBe careful.\n\n## Report\nReport.\n", encoding="utf-8")
+            prompts, version = _load_prompts(path)
+            path.write_text("# Title\n\n## System\nBe very careful.\n\n## Report\nReport.\n", encoding="utf-8")
+            _, edited = _load_prompts(path)
+
+        self.assertEqual(prompts, {"system": "Be careful.", "report": "Report."})
+        self.assertNotEqual(version, edited)
+
+
+@contextlib.asynccontextmanager
+async def fake_session(session):
+    yield session
+
+
+class RunRiskAgentTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        record = {"milestone_id": "M-006", "planned_amount": "14200000.00", "actual_amount": "15100000.00"}
+        self.session = FakeMcpSession({"get_project_records": lambda args: mcp_result(
+            json.dumps({"status": "ok", "project_id": args["project_id"], "records": [record]}))})
+
+    async def test_a_run_reads_the_project_and_records_its_prompt_and_model(self):
+        model = ScriptedModel(replies=[
+            ask_tools(("get_project_records", {"project_id": "PRJ-2401"})),
+            ask_tools(OVERRUN_CALL),
+            AIMessage(content="Done."),
+            report_reply("One cost risk.", [finding(calculations=[("percent_change", "6.3")])]),
+        ])
+
+        state = await run_risk_agent(" PRJ-2401 ", "Cost risks?", model, open_session=lambda: fake_session(self.session))
+
+        self.assertEqual(model.turns[0][1].content, "Project: PRJ-2401\n\nCost risks?")
+        self.assertEqual(model.turns[0][0].content, SYSTEM_PROMPT)
+        self.assertIn("get_project_records", model.bound_tools)
+        self.assertIn("percent_change", model.bound_tools)
+        self.assertEqual(self.session.calls, [("get_project_records", {"project_id": "PRJ-2401"})])
+        self.assertEqual((state["model"], state["prompt_version"]), ("scripted", PROMPT_VERSION))
+        self.assertEqual(warnings(state), [])
+
+        result = json.loads(json.dumps(run_result(state)))  # plain JSON, no messages
+        self.assertEqual(set(result), {"model", "prompt_version", "stopped_reason", "tool_calls", "tokens",
+                                       "report", "report_error", "trace"})
+        self.assertEqual(result["tool_calls"], 2)
+
+    async def test_the_default_question_is_used_when_none_is_given(self):
+        model = ScriptedModel(replies=[AIMessage(content="Done.")])
+
+        await run_risk_agent("PRJ-2401", "  ", model, open_session=lambda: fake_session(self.session))
+
+        self.assertEqual(model.turns[0][1].content, f"Project: PRJ-2401\n\n{DEFAULT_QUESTION}")
+
+    async def test_a_project_id_is_required(self):
+        with self.assertRaises(ValueError):
+            await run_risk_agent(" ", model=ScriptedModel(replies=[]), open_session=lambda: fake_session(self.session))
+
+    async def test_the_cli_output_shows_findings_and_their_warnings(self):
+        model = ScriptedModel(replies=[
+            AIMessage(content="Done."),
+            report_reply("Cost risk of 9%.", [finding(calculations=[("percent_change", "6.3")])], ["Schedule"]),
+        ])
+        state = await run_agent("Risks?", model)
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            _print_run(state)
+
+        text = output.getvalue()
+        self.assertIn(f"prompt {PROMPT_VERSION}", text)
+        self.assertIn("1. [high] M-006 is 6.3% over budget.", text)
+        self.assertIn("evidence: PRJ-2401 M-006", text)
+        self.assertIn("! Evidence M-006 is not in any tool result", text)
+        self.assertIn("! Numbers in the summary that no tool returned: 9", text)
+        self.assertIn("  - Schedule", text)
+
+
 class RealMcpServerTest(unittest.IsolatedAsyncioTestCase):
     async def test_real_database_mcp_server_exposes_only_read_tools(self):
         """Starts the real database MCP server (listing tools needs no database)."""
-        async with database_tools() as db:
-            tools = await langchain_tools(db.session)
+        async with database_session() as session:
+            tools = await langchain_tools(session)
 
         self.assertEqual({tool.name for tool in tools}, READ_TOOLS)
 
     async def test_a_tool_that_raises_comes_back_as_an_mcp_error(self):
         """Bad input is rejected before any database access, so this needs no database either."""
-        async with database_tools() as db:
-            result = await db.session.call_tool("get_project_records", {"project_id": "PRJ-2401", "entity": "session"})
+        async with database_session() as session:
+            result = await session.call_tool("get_project_records", {"project_id": "PRJ-2401", "entity": "session"})
 
         self.assertTrue(result.is_error)
         self.assertIn("Unsupported entity", result.content[0].text)

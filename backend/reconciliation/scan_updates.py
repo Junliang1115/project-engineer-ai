@@ -3,7 +3,6 @@
 import argparse
 import asyncio
 import json
-import os
 import sys
 import tempfile
 from contextlib import asynccontextmanager
@@ -17,8 +16,10 @@ if str(BASE_DIR) not in sys.path:
 
 try:
     from .email_reconciliation import classify_email, ground_email, identify_project
+    from ..mcp_servers.client import database_session
 except ImportError:
     from reconciliation.email_reconciliation import classify_email, ground_email, identify_project
+    from mcp_servers.client import database_session
 
 # Database 
 class McpDatabase:
@@ -40,15 +41,8 @@ class McpDatabase:
 # Call Database MCP
 @asynccontextmanager
 async def database_tools():
-    from mcp import ClientSession, StdioServerParameters
-    from mcp.client.stdio import stdio_client
-
-    server_file = Path(__file__).resolve().parents[1] / "mcp_servers" / "mcp_db_server.py"
-    params = StdioServerParameters(command=sys.executable, args=[str(server_file)], env=dict(os.environ))
-    async with stdio_client(params) as (reader, writer):
-        async with ClientSession(reader, writer) as session:
-            await session.initialize()
-            yield McpDatabase(session)
+    async with database_session() as session:
+        yield McpDatabase(session)
 
 
 def _print_extraction(extraction) -> None:

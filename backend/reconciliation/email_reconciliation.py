@@ -8,7 +8,6 @@ really in the email, which cited IDs were matched by name); record_email_decisio
 database rules and logs the proposal. Email actions are never applied without user review.
 """
 
-import os
 import re
 import datetime
 from datetime import date
@@ -17,8 +16,10 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 try:
+    from ..core.agent import config_model, invoke_structured
     from ..core.project_rules import ActivityCategory
 except ImportError:  # Supports `uvicorn --app-dir backend`.
+    from backend.core.agent import config_model, invoke_structured
     from core.project_rules import ActivityCategory
 
 ID_FIELDS = {"task_id", "request_id", "lesson_id", "phase_id", "milestone_id"}
@@ -218,54 +219,6 @@ def email_source(email: dict) -> str:
     return f"{email.get('subject', '')} {email.get('body', '')} {attachment_text}"
 
 
-def config_model():
-    """Create a V4 Flash-compatible model for forced structured extraction."""
-    from langchain_deepseek import ChatDeepSeek
-
-    if not os.getenv("DEEPSEEK_API_KEY"):
-        raise ValueError("DEEPSEEK_API_KEY is required")
-    return ChatDeepSeek(
-        model=os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
-        temperature=0,
-        extra_body={"thinking": {"type": "disabled"}},
-    )
-
-
-EXTRACTION_ATTEMPTS = 2
-
-
-class ExtractionError(RuntimeError):
-    """The model did not return a structured extraction for the email."""
-
-
-def _invoke_structured(model, schema, prompt):
-    """Structured call with one retry: the model occasionally answers without the tool, parsing to None.
-
-    After the retries the scanner reports the email as failed and tries it again on the next scan.
-    """
-    structured = model.with_structured_output(schema)
-    for _ in range(EXTRACTION_ATTEMPTS):
-        result = structured.invoke(prompt)
-        if result is not None:
-            return result if isinstance(result, schema) else schema.model_validate(result)
-    raise ExtractionError(f"The model returned no structured extraction after {EXTRACTION_ATTEMPTS} attempts")
-
-
-async def _ainvoke_structured(model, schema, prompt, replies: list | None = None):
-    """Async _invoke_structured; appends each raw model reply to `replies` (for token counts)."""
-    structured = model.with_structured_output(schema, include_raw=True)
-    error = None
-    for _ in range(EXTRACTION_ATTEMPTS):
-        output = await structured.ainvoke(prompt)
-        if replies is not None:
-            replies.append(output["raw"])
-        result, error = output["parsed"], output["parsing_error"] or error
-        if result is not None:
-            return result if isinstance(result, schema) else schema.model_validate(result)
-    reason = f" (last error: {str(error)[:300]})" if error else ""
-    raise ExtractionError(f"The model returned no structured extraction after {EXTRACTION_ATTEMPTS} attempts{reason}")
-
-
 def describe_projects(projects: list[dict]) -> str:
     lines = [
         f"- {project['id']}: " + ", ".join(str(project[key]) for key in ("name", "client", "location") if project.get(key))
@@ -287,7 +240,7 @@ def identify_project(email: dict, projects: list[dict], model=None) -> ProjectMa
         body=email.get("body", "")[:8000],
         attachments=describe_attachments(email.get("documents"))[:3000],
     )
-    match = _invoke_structured(model, ProjectMatch, prompt)
+    match = invoke_structured(model, ProjectMatch, prompt)
     if match.project_id and match.project_id not in {project["id"] for project in projects}:
         return ProjectMatch(evidence=f"Unknown project {match.project_id!r} suggested: {match.evidence}"[:300], confidence="low")
     return match
@@ -311,7 +264,7 @@ def classify_email(email: dict, model=None, entity_schema: dict | None = None,
         body=email.get("body", "")[:30000],
         attachments=describe_attachments(email.get("documents")),
     )
-    extraction = _invoke_structured(model, EmailExtraction, prompt)
+    extraction = invoke_structured(model, EmailExtraction, prompt)
     reported = next((entry for entry in extraction.dates if entry.kind == "reported"), None)
     return extraction.model_copy(update={
         "project_id": project.project_id,

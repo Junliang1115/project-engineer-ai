@@ -125,10 +125,10 @@ class AiReadingTest(unittest.TestCase):
         self.assertIn("PRJ-7777", match.evidence)
 
     def test_gives_a_clear_error_when_the_model_never_extracts(self):
-        from backend.reconciliation.email_reconciliation import ExtractionError
+        from backend.core.agent import StructuredOutputError
 
         model = SequenceModel([None, None])
-        with self.assertRaisesRegex(ExtractionError, "no structured extraction after 2 attempts"):
+        with self.assertRaisesRegex(StructuredOutputError, "no valid EmailExtraction after 2 attempts"):
             classify_email(email("TQ attached"), model)
 
 
